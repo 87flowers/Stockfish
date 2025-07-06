@@ -27,6 +27,10 @@
 
 using namespace Stockfish;
 
+#if !defined(USE_VBMI2)
+    #error "fishtest testing : patch requires VBMI2"
+#endif
+
 int main(int argc, char* argv[]) {
 
     std::cout << engine_info() << std::endl;
