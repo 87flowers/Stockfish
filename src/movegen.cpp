@@ -78,7 +78,7 @@ inline void splat_pawn_moves(ExtMove* moveList, Bitboard to_bb) {
     write_moves(static_cast<u16>(to_bb >> 48),
                 _mm512_sub_epi32(_mm512_load_si512(SPLAT_PAWN_TABLE.data() + 48), offsetVec));
 #else
-    while (bb)
+    while (to_bb)
     {
         Square to   = pop_lsb(to_bb);
         *moveList++ = Move(to - offset, to);
@@ -180,8 +180,8 @@ ExtMove* generate_pawn_moves(const Position& pos, ExtMove* moveList, Bitboard ta
         Bitboard b1 = shift<UpRight>(pawnsNotOn7) & enemies;
         Bitboard b2 = shift<UpLeft>(pawnsNotOn7) & enemies;
 
-        splat_pawn_moves<UpRight>(b1);
-        splat_pawn_moves<UpLeft>(b2);
+        splat_pawn_moves<UpRight>(moveList, b1);
+        splat_pawn_moves<UpLeft>(moveList, b2);
 
         if (pos.ep_square() != SQ_NONE)
         {
@@ -216,7 +216,7 @@ ExtMove* generate_moves(const Position& pos, ExtMove* moveList, Bitboard target)
         Square   from = pop_lsb(bb);
         Bitboard b    = attacks_bb<Pt>(from, pos.pieces()) & target;
 
-        splat_moves(from, b);
+        splat_moves(moveList, from, b);
     }
 
     return moveList;
@@ -248,7 +248,7 @@ ExtMove* generate_all(const Position& pos, ExtMove* moveList) {
 
     Bitboard b = attacks_bb<KING>(ksq) & (Type == EVASIONS ? ~pos.pieces(Us) : target);
 
-    splat_moves(ksq, b);
+    splat_moves(moveList, ksq, b);
 
     if ((Type == QUIETS || Type == NON_EVASIONS) && pos.can_castle(Us & ANY_CASTLING))
         for (CastlingRights cr : {Us & KING_SIDE, Us & QUEEN_SIDE})
