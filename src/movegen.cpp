@@ -24,7 +24,8 @@
 #include "bitboard.h"
 #include "position.h"
 
-#if defined(USE_AVX512)
+#if defined(USE_AVX512) || defined(USE_VNNI)
+    #include <array>
     #include <immintrin.h>
 #endif
 
@@ -32,27 +33,26 @@ namespace Stockfish {
 
 namespace {
 
-#if defined(USE_AVX512)
-constexpr alignas(64) std::array<ExtMove, 64> SPLAT_PAWN_TABLE = [] {
+#if defined(USE_AVX512) || defined(USE_VNNI)
+alignas(64) constexpr std::array<ExtMove, 64> SPLAT_PAWN_TABLE = [] {
     // Ensure the move format hasn't changed.
-    static_assert(Move::make(SQ_D4 - Up, SQ_D4).raw()
-                  == Move::make(SQ_D4, SQ_D4).raw() - (Up << 6));
+    static_assert(Move(SQ_D4 - Up, SQ_D4).raw() == Move(SQ_D4, SQ_D4).raw() - (Up << 6));
 
     std::array<ExtMove, 64> pawn_table{};
     for (int i = 0; i < 64; i++)
-        pawn_table[i] = Move::make(i, i);
+        pawn_table[i] = Move(i, i);
     return pawn_table;
 }();
 
 static_assert(sizeof(SPLAT_PAWN_TABLE) == 256);
 
-constexpr alignas(64) std::array<ExtMove, 64> SPLAT_TABLE = [] {
+alignas(64) constexpr std::array<ExtMove, 64> SPLAT_TABLE = [] {
     // Ensure the move format hasn't changed.
-    static_assert(Move::make(SQ_E7, SQ_D4).raw() == Move::make(0, SQ_D4).raw() | (SQ_E7 << 6));
+    static_assert(Move(SQ_E7, SQ_D4).raw() == Move(0, SQ_D4).raw() | (SQ_E7 << 6));
 
     std::array<ExtMove, 64> table{};
     for (int i = 0; i < 64; i++)
-        table[i] = Move::make(0, i);
+        table[i] = Move(0, i);
     return table;
 }();
 
@@ -67,7 +67,7 @@ inline void write_moves(ExtMove* moveList, uint16_t mask, __m512i vector) {
 
 template<Direction offset>
 inline void splat_pawn_moves(ExtMove* moveList, Bitboard to_bb) {
-#if defined(USE_AVX512)
+#if defined(USE_AVX512) || defined(USE_VNNI)
     __m512i offsetVec = _mm512_set1_epi32(offset << 6);
     write_moves(static_cast<u16>(to_bb >> 0),
                 _mm512_sub_epi32(_mm512_load_si512(SPLAT_PAWN_TABLE.data() + 0), offsetVec));
@@ -87,7 +87,7 @@ inline void splat_pawn_moves(ExtMove* moveList, Bitboard to_bb) {
 }
 
 inline void splat_moves(ExtMove* moveList, Square from, Bitboard to_bb) {
-#if defined(USE_AVX512)
+#if defined(USE_AVX512) || defined(USE_VNNI)
     __m512i fromVec = _mm512_set1_epi32(from << 6);
     write_moves(static_cast<u16>(to_bb >> 0),
                 _mm512_or_epi32(_mm512_load_si512(SPLAT_TABLE.data() + 0), fromVec));
