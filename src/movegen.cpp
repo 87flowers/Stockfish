@@ -60,7 +60,7 @@ alignas(64) constexpr std::array<Move, 64> SPLAT_TABLE = [] {
 static_assert(sizeof(SPLAT_TABLE) == 128);
 
 inline Move* write_moves(Move* moveList, uint32_t mask, __m512i vector) {
-    _mm512_storeu_si512((__m512i*) moveList, _mm512_maskz_compress_epi16(mask, vector));
+    _mm512_mask_compressstoreu_epi16((void*) moveList, mask, vector);
     return moveList + __builtin_popcount(mask);
 }
 
