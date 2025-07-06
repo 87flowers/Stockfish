@@ -24,22 +24,83 @@
 #include "bitboard.h"
 #include "position.h"
 
+#if defined(USE_AVX512)
+    #include <immintrin.h>
+#endif
+
 namespace Stockfish {
 
 namespace {
 
+#if defined(USE_AVX512)
+constexpr alignas(64) std::array<ExtMove, 64> SPLAT_PAWN_TABLE = [] {
+    // Ensure the move format hasn't changed.
+    static_assert(Move::make(SQ_D4 - Up, SQ_D4).raw()
+                  == Move::make(SQ_D4, SQ_D4).raw() - (Up << 6));
+
+    std::array<ExtMove, 64> pawn_table{};
+    for (int i = 0; i < 64; i++)
+        pawn_table[i] = Move::make(i, i);
+    return pawn_table;
+}();
+
+static_assert(sizeof(SPLAT_PAWN_TABLE) == 256);
+
+constexpr alignas(64) std::array<ExtMove, 64> SPLAT_TABLE = [] {
+    // Ensure the move format hasn't changed.
+    static_assert(Move::make(SQ_E7, SQ_D4).raw() == Move::make(0, SQ_D4).raw() | (SQ_E7 << 6));
+
+    std::array<ExtMove, 64> table{};
+    for (int i = 0; i < 64; i++)
+        table[i] = Move::make(0, i);
+    return table;
+}();
+
+static_assert(sizeof(SPLAT_TABLE) == 256);
+
+inline void write_moves(ExtMove* moveList, uint16_t mask, __m512i vector) {
+    __m512i toWrite = _mm512_maskz_compress_epi32(mask, vector);
+    _mm_storeu_si128((__m512i*) moveList, toWrite);
+    moveList += __builtin_popcount(mask);
+}
+#endif
+
 template<Direction offset>
 inline void splat_pawn_moves(ExtMove* moveList, Bitboard to_bb) {
+#if defined(USE_AVX512)
+    __m512i offsetVec = _mm512_set1_epi32(offset << 6);
+    write_moves(static_cast<u16>(to_bb >> 0),
+                _mm512_sub_epi32(_mm512_load_si512(SPLAT_PAWN_TABLE.data() + 0), offsetVec));
+    write_moves(static_cast<u16>(to_bb >> 16),
+                _mm512_sub_epi32(_mm512_load_si512(SPLAT_PAWN_TABLE.data() + 16), offsetVec));
+    write_moves(static_cast<u16>(to_bb >> 32),
+                _mm512_sub_epi32(_mm512_load_si512(SPLAT_PAWN_TABLE.data() + 32), offsetVec));
+    write_moves(static_cast<u16>(to_bb >> 48),
+                _mm512_sub_epi32(_mm512_load_si512(SPLAT_PAWN_TABLE.data() + 48), offsetVec));
+#else
     while (bb)
     {
         Square to   = pop_lsb(to_bb);
         *moveList++ = Move(to - offset, to);
     }
+#endif
 }
 
 inline void splat_moves(ExtMove* moveList, Square from, Bitboard to_bb) {
+#if defined(USE_AVX512)
+    __m512i fromVec = _mm512_set1_epi32(from << 6);
+    write_moves(static_cast<u16>(to_bb >> 0),
+                _mm512_or_epi32(_mm512_load_si512(SPLAT_TABLE.data() + 0), fromVec));
+    write_moves(static_cast<u16>(to_bb >> 16),
+                _mm512_or_epi32(_mm512_load_si512(SPLAT_TABLE.data() + 16), fromVec));
+    write_moves(static_cast<u16>(to_bb >> 32),
+                _mm512_or_epi32(_mm512_load_si512(SPLAT_TABLE.data() + 32), fromVec));
+    write_moves(static_cast<u16>(to_bb >> 48),
+                _mm512_or_epi32(_mm512_load_si512(SPLAT_TABLE.data() + 48), fromVec));
+#else
     while (to_bb)
         *moveList++ = Move(from, pop_lsb(to_bb));
+#endif
 }
 
 template<GenType Type, Direction D, bool Enemy>
