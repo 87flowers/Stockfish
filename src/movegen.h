@@ -39,7 +39,7 @@ enum GenType {
 struct ExtMove: public Move {
     int value;
 
-    void operator=(Move m) { data = m.raw(); }
+    constexpr void operator=(Move m) { data = m.raw(); }
 
     // Inhibit unwanted implicit conversions to Move
     // with an ambiguity that yields to a compile error.
