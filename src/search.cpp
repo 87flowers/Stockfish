@@ -914,7 +914,7 @@ Value Search::Worker::search(
         assert(probCutBeta < VALUE_INFINITE && probCutBeta > beta);
 
         MovePicker mp(pos, ttData.move, probCutBeta - ss->staticEval, &thisThread->captureHistory);
-        Depth      probCutDepth = std::max(depth - 5, 0);
+        Depth      probCutDepth = std::max(depth / 2 - 2, 0);
 
         while ((move = mp.next_move()) != Move::none())
         {
@@ -935,11 +935,9 @@ Value Search::Worker::search(
             ss->continuationCorrectionHistory =
               &this->continuationCorrectionHistory[movedPiece][move.to_sq()];
 
-            // Perform a preliminary qsearch to verify that the move holds
-            value = -qsearch<NonPV>(pos, ss + 1, -probCutBeta, -probCutBeta + 1);
-
-            // If the qsearch held, perform the regular search
-            if (value >= probCutBeta && probCutDepth > 0)
+            if (probCutDepth == 0)
+                value = -qsearch<NonPV>(pos, ss + 1, -probCutBeta, -probCutBeta + 1);
+            else
                 value = -search<NonPV>(pos, ss + 1, -probCutBeta, -probCutBeta + 1, probCutDepth,
                                        !cutNode);
 
