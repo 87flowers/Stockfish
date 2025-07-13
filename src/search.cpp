@@ -1228,6 +1228,9 @@ moves_loop:  // When in check, search starts here
         // Decrease/increase reduction for moves with a good/bad history
         r -= ss->statScore * 826 / 8192;
 
+        // Was a deep search done?
+        bool deepSearchDone = false;
+
         // Step 17. Late moves reduction / extension (LMR)
         if (depth >= 2 && moveCount > 1)
         {
@@ -1261,6 +1264,8 @@ moves_loop:  // When in check, search starts here
 
                 // Post LMR continuation history updates
                 update_continuation_histories(ss, movedPiece, move.to_sq(), 1508);
+
+                deepSearchDone = true;
             }
             else if (value > alpha && value < bestValue + 9)
                 newDepth--;
@@ -1278,6 +1283,8 @@ moves_loop:  // When in check, search starts here
             // Note that if expected reduction is high, we reduce search depth here
             value = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha,
                                    newDepth - (r > 3564) - (r > 4969 && newDepth > 2), !cutNode);
+
+            deepSearchDone = true;
         }
 
         // For PV nodes only, do a full PV search on the first move or after a fail high,
@@ -1384,7 +1391,7 @@ moves_loop:  // When in check, search starts here
 
                 // Reduce other moves if we have found at least one score improvement
                 if (depth > 2 && depth < 16 && !is_decisive(value))
-                    depth -= 2;
+                    depth -= 2 + deepSearchDone;
 
                 assert(depth > 0);
                 alpha = value;  // Update alpha! Always alpha < beta
