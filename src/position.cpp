@@ -1047,6 +1047,23 @@ void Position::undo_null_move() {
 std::tuple<PieceType, Bitboard> Position::lowest_value_in(Bitboard attackers) const {
     assert(attackers & pieces());
 
+#if defined(USE_AVX2)
+    __m256i attackersVec = _mm256_set1_epi64x(attackers);
+    __m256i piecesVec0   = _mm256_loadu_epi64(&byTypeBB[0]);
+    __m256i piecesVec1   = _mm256_loadu_epi64(&byTypeBB[4]);
+
+    __m256i isZero0 =
+      _mm256_cmpeq_epi64(_mm256_and_si256(piecesVec0, attackersVec), _mm256_setzero_si256());
+    __m256i isZero1 =
+      _mm256_cmpeq_epi64(_mm256_and_si256(piecesVec1, attackersVec), _mm256_setzero_si256());
+
+    uint8_t mask = 0x81;
+    mask |= _mm256_movemask_pd(reinterpret_cast<__m256d>(isZero0)) << 0;
+    mask |= _mm256_movemask_pd(reinterpret_cast<__m256d>(isZero1)) << 4;
+
+    PieceType piece = static_cast<PieceType>(__builtin_ctz(~mask));
+    return {piece, least_significant_square_bb(attackers & pieces(piece))};
+#else
     if (Bitboard bb = attackers & pieces(PAWN))
     {
         return {PAWN, least_significant_square_bb(bb)};
@@ -1072,6 +1089,7 @@ std::tuple<PieceType, Bitboard> Position::lowest_value_in(Bitboard attackers) co
         return {KING, least_significant_square_bb(bb)};
     }
     return {NO_PIECE_TYPE, 0};
+#endif
 }
 
 // Tests if the SEE (Static Exchange Evaluation)
