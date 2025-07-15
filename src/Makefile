@@ -709,6 +709,7 @@ ifeq ($(vnni256),yes)
 	CXXFLAGS += -DUSE_VNNI
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw icx))
 		CXXFLAGS += -mavx512f -mavx512bw -mavx512vnni -mavx512dq -mavx512vl -mprefer-vector-width=256
+		CXXFLAGS += -mavx512vbmi -mavx512bitalg
 	endif
 endif
 
@@ -716,6 +717,7 @@ ifeq ($(vnni512),yes)
 	CXXFLAGS += -DUSE_VNNI
 	ifeq ($(comp),$(filter $(comp),gcc clang mingw icx))
 		CXXFLAGS += -mavx512f -mavx512bw -mavx512vnni -mavx512dq -mavx512vl -mprefer-vector-width=512
+		CXXFLAGS += -mavx512vbmi -mavx512bitalg
 	endif
 endif
 
