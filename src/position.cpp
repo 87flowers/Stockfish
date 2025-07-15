@@ -1046,8 +1046,29 @@ void Position::undo_null_move() {
 
 std::tuple<PieceType, Bitboard> Position::lowest_value_in(Bitboard attackers) const {
     assert(attackers & pieces());
-
 #if defined(USE_AVX2)
+    #if defined(USE_AVX512)
+
+    __m512i attackersVec = _mm512_set1_epi64(attackers);
+    __m512i piecesVec    = _mm512_loadu_epi64(&byTypeBB[0]);
+
+    uint8_t invmask = 0;
+    invmask |= _mm512_test_epi64_mask(piecesVec, attackersVec);
+    invmask &= 0x7E;
+
+    #elif defined(USE_VNNI)
+
+    __m256i attackersVec = _mm256_set1_epi64x(attackers);
+    __m256i piecesVec0   = _mm256_loadu_epi64(&byTypeBB[0]);
+    __m256i piecesVec1   = _mm256_loadu_epi64(&byTypeBB[4]);
+
+    uint8_t invmask = 0;
+    invmask |= _mm256_test_epi64_mask(piecesVec0, attackersVec) << 0;
+    invmask |= _mm256_test_epi64_mask(piecesVec1, attackersVec) << 4;
+    invmask &= 0x7E;
+
+    #else
+
     __m256i attackersVec = _mm256_set1_epi64x(attackers);
     __m256i piecesVec0   = _mm256_loadu_epi64(&byTypeBB[0]);
     __m256i piecesVec1   = _mm256_loadu_epi64(&byTypeBB[4]);
@@ -1060,8 +1081,11 @@ std::tuple<PieceType, Bitboard> Position::lowest_value_in(Bitboard attackers) co
     uint8_t mask = 0x81;
     mask |= _mm256_movemask_pd(reinterpret_cast<__m256d>(isZero0)) << 0;
     mask |= _mm256_movemask_pd(reinterpret_cast<__m256d>(isZero1)) << 4;
+    uint8_t invmask = ~mask;
 
-    PieceType piece = static_cast<PieceType>(__builtin_ctz(~mask));
+    #endif
+
+    PieceType piece = static_cast<PieceType>(__builtin_ctz(invmask));
     return {piece, least_significant_square_bb(attackers & pieces(piece))};
 #else
     if (Bitboard bb = attackers & pieces(PAWN))
