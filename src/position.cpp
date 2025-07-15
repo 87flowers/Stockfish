@@ -32,6 +32,7 @@
 #include <utility>
 
 #include "bitboard.h"
+#include "bitrays.h"
 #include "misc.h"
 #include "movegen.h"
 #include "syzygy/tbprobe.h"
@@ -1044,7 +1045,6 @@ void Position::undo_null_move() {
     sideToMove = ~sideToMove;
 }
 
-
 // Tests if the SEE (Static Exchange Evaluation)
 // value of move is greater or equal to the given threshold. We'll use an
 // algorithm similar to alpha-beta pruning with a null window.
@@ -1067,11 +1067,86 @@ bool Position::see_ge(Move m, int threshold) const {
         return true;
 
     assert(color_of(piece_on(from)) == sideToMove);
+    Color stm = sideToMove;
+    int   res = 1;
+
+#if defined(USE_BITRAYS)
+
+    Bitboard occupiedForPinners =
+      pieces() ^ from ^ to;  // xoring to is important for pinned piece logic
+
+    auto [perm, permMask] = bitrays_permuation(to);
+    Rays    rays          = board_to_rays(perm, permMask, board);
+    Bitrays color         = bitrays_color(rays);
+    Bitrays occupied      = bitrays_occupied(rays);
+    Bitrays allAttackers  = bitrays_attackers(rays);
+
+    occupied ^= _mm512_cmpeq_epu8_mask(perm, _mm512_set1_epi8(from)) & permMask;
+
+    std::array<Bitrays, 2> brBlockersForKing{
+      bitrays_from_bb(perm, permMask, blockers_for_king(WHITE)),
+      bitrays_from_bb(perm, permMask, blockers_for_king(BLACK)),
+    };
+
+    alignas(64) std::array<Bitrays, 8> pieceRays{
+      0,
+      bitrays_for<PAWN>(rays),
+      bitrays_for<KNIGHT>(rays),
+      bitrays_for<BISHOP>(rays),
+      bitrays_for<ROOK>(rays),
+      bitrays_for<QUEEN>(rays),
+      bitrays_for<KING>(rays),
+      0,
+    };
+
+    auto current_attackers = [&](Color c) {
+        return bitrays_closest(occupied) & (c == BLACK ? color : ~color) & allAttackers;
+    };
+
+    while (true)
+    {
+        stm = ~stm;
+
+        Bitrays stmAttackers = current_attackers(stm);
+
+        // If stm has no more attackers then give up: stm loses
+        if (!stmAttackers)
+            break;
+
+        // Don't allow pinned pieces to attack as long as there are
+        // pinners on their original square.
+        if (pinners(~stm) & occupiedForPinners)
+        {
+            stmAttackers &= ~brBlockersForKing[stm];
+
+            if (!stmAttackers)
+                break;
+        }
+
+        res ^= 1;
+
+        // Locate and remove the next least valuable attacker
+
+        PieceType next = bitrays_see_next(pieceRays, stmAttackers);
+
+        if (next == KING)
+            return current_attackers(~stm) ? res ^ 1 : res;
+
+        if ((swap = PieceValue[next] - swap) < res)
+            break;
+
+        Bitrays br = least_significant_square_br(pieceRays[next] & stmAttackers);
+        occupied ^= br;
+        occupiedForPinners ^= bitray_bit_to_sq(perm, br);
+    }
+
+    return bool(res);
+
+#else
+
     Bitboard occupied  = pieces() ^ from ^ to;  // xoring to is important for pinned piece logic
-    Color    stm       = sideToMove;
     Bitboard attackers = attackers_to(to, occupied);
     Bitboard stmAttackers, bb;
-    int      res = 1;
 
     while (true)
     {
@@ -1146,6 +1221,8 @@ bool Position::see_ge(Move m, int threshold) const {
               // reverse the result.
             return (attackers & ~pieces(stm)) ? res ^ 1 : res;
     }
+
+#endif
 
     return bool(res);
 }
