@@ -24,6 +24,7 @@
 #include <iosfwd>
 #include <memory>
 #include <string>
+#include <tuple>
 
 #include "bitboard.h"
 #include "types.h"
@@ -139,7 +140,8 @@ class Position {
     void       undo_null_move();
 
     // Static Exchange Evaluation
-    bool see_ge(Move m, int threshold = 0) const;
+    std::tuple<PieceType, Bitboard> lowest_value_in(Bitboard attackers) const;
+    bool                            see_ge(Move m, int threshold = 0) const;
 
     // Accessing hash keys
     Key key() const;
