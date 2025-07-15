@@ -27,6 +27,10 @@
 
 using namespace Stockfish;
 
+#if !defined(USE_AVX512ICL)
+    #error "fishtest: only running tests on AVX512ICL machines"
+#endif
+
 int main(int argc, char* argv[]) {
 
     std::cout << engine_info() << std::endl;
