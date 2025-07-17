@@ -1175,7 +1175,7 @@ bool Position::see_ge(Move m, int threshold) const {
         {
             if ((swap = PawnValue - swap) < res)
                 break;
-            occupied ^= least_significant_square_bb(bb);
+            occupied ^= see_pick_a_piece<PAWN>(bb, to);
 
             attackers |= attacks_bb<BISHOP>(to, occupied) & pieces(BISHOP, QUEEN);
         }
@@ -1184,14 +1184,14 @@ bool Position::see_ge(Move m, int threshold) const {
         {
             if ((swap = KnightValue - swap) < res)
                 break;
-            occupied ^= least_significant_square_bb(bb);
+            occupied ^= see_pick_a_piece<KNIGHT>(bb, to);
         }
 
         else if ((bb = stmAttackers & pieces(BISHOP)))
         {
             if ((swap = BishopValue - swap) < res)
                 break;
-            occupied ^= least_significant_square_bb(bb);
+            occupied ^= see_pick_a_piece<BISHOP>(bb, to);
 
             attackers |= attacks_bb<BISHOP>(to, occupied) & pieces(BISHOP, QUEEN);
         }
@@ -1200,7 +1200,7 @@ bool Position::see_ge(Move m, int threshold) const {
         {
             if ((swap = RookValue - swap) < res)
                 break;
-            occupied ^= least_significant_square_bb(bb);
+            occupied ^= see_pick_a_piece<ROOK>(bb, to);
 
             attackers |= attacks_bb<ROOK>(to, occupied) & pieces(ROOK, QUEEN);
         }
@@ -1210,7 +1210,7 @@ bool Position::see_ge(Move m, int threshold) const {
             swap = QueenValue - swap;
             //  implies that the previous recapture was done by a higher rated piece than a Queen (King is excluded)
             assert(swap >= res);
-            occupied ^= least_significant_square_bb(bb);
+            occupied ^= see_pick_a_piece<QUEEN>(bb, to);
 
             attackers |= (attacks_bb<BISHOP>(to, occupied) & pieces(BISHOP, QUEEN))
                        | (attacks_bb<ROOK>(to, occupied) & pieces(ROOK, QUEEN));

@@ -23,17 +23,18 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
-#include <xmmintrin.h>
 
+#include "bitboard.h"
 #include "types.h"
 
 #if defined(USE_AVX512ICL)
+    #include <xmmintrin.h>
     #define USE_BITRAYS
 #endif
 
-#if defined(USE_BITRAYS)
-
 namespace Stockfish {
+
+#if defined(USE_BITRAYS)
 
 using BitraysPermutation = __m512i;
 using Rays               = __m512i;
@@ -44,14 +45,14 @@ inline std::tuple<BitraysPermutation, RaysMask> bitrays_permuation(Square focus)
     // We convert to and from this representation to avoid a 4KiB LUT.
 
     alignas(64) static constexpr std::array<uint8_t, 64> OFFSETS{{
-      0x1F, 0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70,  // N
+      0xDF, 0xF0, 0xE0, 0xD0, 0xC0, 0xB0, 0xA0, 0x90,  // S
+      0xE1, 0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA, 0xF9,  // W
+      0xEE, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,  // E
+      0xF2, 0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70,  // N
+      0x0E, 0xEF, 0xDE, 0xCD, 0xBC, 0xAB, 0x9A, 0x89,  // SW
+      0x12, 0x0F, 0x1E, 0x2D, 0x3C, 0x4B, 0x5A, 0x69,  // NW
+      0x1F, 0xF1, 0xE2, 0xD3, 0xC4, 0xB5, 0xA6, 0x97,  // SE
       0x21, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,  // NE
-      0x12, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,  // E
-      0xF2, 0xF1, 0xE2, 0xD3, 0xC4, 0xB5, 0xA6, 0x97,  // SE
-      0xE1, 0xF0, 0xE0, 0xD0, 0xC0, 0xB0, 0xA0, 0x90,  // S
-      0xDF, 0xEF, 0xDE, 0xCD, 0xBC, 0xAB, 0x9A, 0x89,  // SW
-      0xEE, 0xFF, 0xFE, 0xFD, 0xFC, 0xFB, 0xFA, 0xF9,  // W
-      0x0E, 0x0F, 0x1E, 0x2D, 0x3C, 0x4B, 0x5A, 0x69,  // NW
     }};
 
     uint8_t f      = static_cast<uint8_t>(focus);
@@ -94,14 +95,14 @@ inline Bitrays bitrays_attackers(Rays rays) {
     constexpr uint8_t bpawn_near = 0b01101010;  // bp, king, bishop, queen
 
     alignas(64) static constexpr std::array<uint8_t, 64> MASK{{
-      horse, orth_near,  orth, orth, orth, orth, orth, orth,  // N
-      horse, bpawn_near, diag, diag, diag, diag, diag, diag,  // NE
-      horse, orth_near,  orth, orth, orth, orth, orth, orth,  // E
-      horse, wpawn_near, diag, diag, diag, diag, diag, diag,  // SE
       horse, orth_near,  orth, orth, orth, orth, orth, orth,  // S
-      horse, wpawn_near, diag, diag, diag, diag, diag, diag,  // SW
       horse, orth_near,  orth, orth, orth, orth, orth, orth,  // W
+      horse, orth_near,  orth, orth, orth, orth, orth, orth,  // E
+      horse, orth_near,  orth, orth, orth, orth, orth, orth,  // N
+      horse, wpawn_near, diag, diag, diag, diag, diag, diag,  // SW
       horse, bpawn_near, diag, diag, diag, diag, diag, diag,  // NW
+      horse, wpawn_near, diag, diag, diag, diag, diag, diag,  // SE
+      horse, bpawn_near, diag, diag, diag, diag, diag, diag,  // NE
     }};
 
     return _mm512_test_epi8_mask(rays, _mm512_loadu_epi8(MASK.data()));
@@ -154,8 +155,43 @@ inline PieceType bitrays_see_next(const std::array<Bitrays, 8>& pieces, Bitrays 
     return static_cast<PieceType>(__builtin_ctz(mask));
 }
 
+#else
+
+inline Bitboard pick_one_from(Bitboard first, Bitboard second) {
+    #if defined(__GNUC__) && defined(IS_64BIT)
+    __extension__ using uint128_t = unsigned __int128;
+    uint128_t x = static_cast<uint128_t>(first) | (static_cast<uint128_t>(second) << 64);
+    x           = x & -x;
+    return static_cast<uint64_t>(x) | static_cast<uint64_t>(x >> 64);
+    #else
+    Bitboard a = -first;
+    Bitboard b = -second - (a > 0);
+    return (first & a) | (second & b);
+    #endif
+}
+
+template<PieceType piece>
+inline Bitboard see_pick_a_piece(Bitboard bb, Square to) {
+    switch (piece)
+    {
+    case PAWN :
+    case ROOK :
+    case KNIGHT :
+        return least_significant_square_bb(bb);
+    case BISHOP : {
+        Bitboard mask = file_bb(to) - FileABB;
+        return pick_one_from(bb & mask, bb);
+    }
+    case QUEEN :
+    case KING : {
+        Bitboard orth = attacks_bb<ROOK>(to);
+        return pick_one_from(bb & orth, see_pick_a_piece<BISHOP>(bb, to));
+    }
+    }
 }
 
 #endif
+
+}
 
 #endif
