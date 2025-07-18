@@ -1081,7 +1081,7 @@ bool Position::see_ge(Move m, int threshold) const {
     Bitrays occupied      = bitrays_occupied(rays);
     Bitrays allAttackers  = bitrays_attackers(rays);
 
-    occupied ^= _mm512_cmpeq_epu8_mask(perm, _mm512_set1_epi8(from)) & permMask;
+    occupied ^= bitrays_from_sq(perm, permMask, from);
 
     std::array<Bitrays, 2> brBlockersForKing{
       bitrays_from_bb(perm, permMask, blockers_for_king(WHITE)),
