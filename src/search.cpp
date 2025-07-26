@@ -51,6 +51,9 @@
 
 namespace Stockfish {
 
+int lhp[5]{40, 40, 40, 40, 40};
+TUNE(SetRange(-1024, 1024), lhp);
+
 namespace TB = Tablebases;
 
 void syzygy_extend_pv(const OptionsMap&            options,
@@ -1892,7 +1895,7 @@ void update_quiet_histories(
     workerThread.mainHistory[us][move.from_to()] << bonus;  // Untuned to prevent duplicate effort
 
     if (ss->ply < LOW_PLY_HISTORY_SIZE)
-        workerThread.lowPlyHistory[ss->ply][move.from_to()] << (bonus * 792 / 1024) + 40;
+        workerThread.lowPlyHistory[ss->ply][move.from_to()] << (bonus * 792 / 1024) + lhp[ss->ply];
 
     update_continuation_histories(ss, pos.moved_piece(move), move.to_sq(),
                                   bonus * (bonus > 0 ? 1082 : 784) / 1024);
