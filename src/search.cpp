@@ -259,13 +259,14 @@ void Search::Worker::iterative_deepening() {
         StateInfo* si = rootPos.state();
         for (int i = 1; i <= 7; ++i)
         {
-            if (si)
+            if (si && si->previous)
             {
-                bool   inCheck    = si->checkersBB != 0;
+                bool   inCheck    = si->previous->checkersBB != 0;
                 bool   capture    = si->capturedPiece != NO_PIECE;
                 Piece  movedPiece = si->lastMovedPiece;
                 Square moveTo     = si->lastMove.to_sq();
 
+                (ss - i)->inCheck = inCheck;
                 (ss - i)->continuationHistory =
                   &continuationHistory[inCheck][capture][movedPiece][moveTo];
                 (ss - i)->continuationCorrectionHistory =
