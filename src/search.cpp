@@ -255,18 +255,39 @@ void Search::Worker::iterative_deepening() {
     Stack  stack[MAX_PLY + 10] = {};
     Stack* ss                  = stack + 7;
 
-    for (int i = 7; i > 0; --i)
     {
-        (ss - i)->continuationHistory =
-          &continuationHistory[0][0][NO_PIECE][0];  // Use as a sentinel
-        (ss - i)->continuationCorrectionHistory = &continuationCorrectionHistory[NO_PIECE][0];
-        (ss - i)->staticEval                    = VALUE_NONE;
+        StateInfo* si = rootPos.state();
+        for (int i = 1; i <= 7; ++i)
+        {
+            if (si)
+            {
+                bool   inCheck    = si->checkersBB != 0;
+                bool   capture    = si->capturedPiece != NO_PIECE;
+                Piece  movedPiece = si->lastMovedPiece;
+                Square moveTo     = si->lastMove.to_sq();
+
+                (ss - i)->continuationHistory =
+                  &continuationHistory[inCheck][capture][movedPiece][moveTo];
+                (ss - i)->continuationCorrectionHistory =
+                  &continuationCorrectionHistory[movedPiece][moveTo];
+
+                si = si->previous;
+            }
+            else
+            {
+                (ss - i)->continuationHistory =
+                  &continuationHistory[0][0][NO_PIECE][0];  // Use as a sentinel
+                (ss - i)->continuationCorrectionHistory =
+                  &continuationCorrectionHistory[NO_PIECE][0];
+            }
+            (ss - i)->staticEval = VALUE_NONE;
+        }
+
+        for (int i = 0; i <= MAX_PLY + 2; ++i)
+            (ss + i)->ply = i;
+
+        ss->pv = pv;
     }
-
-    for (int i = 0; i <= MAX_PLY + 2; ++i)
-        (ss + i)->ply = i;
-
-    ss->pv = pv;
 
     if (mainThread)
     {

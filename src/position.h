@@ -58,6 +58,8 @@ struct StateInfo {
     Bitboard   checkSquares[PIECE_TYPE_NB];
     Piece      capturedPiece;
     int        repetition;
+    Piece      lastMovedPiece;
+    Move       lastMove;
 };
 
 
