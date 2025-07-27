@@ -211,6 +211,16 @@ struct Skill {
     Move   best = Move::none();
 };
 
+// Required additional information about moves that happened prior to the root search position
+struct PrehistoryInfo {
+    bool   inCheck;
+    bool   capture;
+    Piece  movedPiece;
+    Square moveTo;
+};
+
+using PrehistoryList = std::vector<PrehistoryInfo>;
+
 // SearchManager manages the search from the main thread. It is responsible for
 // keeping track of the time, and storing data strictly related to the main thread.
 class SearchManager: public ISearchManager {
@@ -349,6 +359,8 @@ class Worker {
     std::unique_ptr<ISearchManager> manager;
 
     Tablebases::Config tbConfig;
+
+    PrehistoryList prehistory;
 
     const OptionsMap&                               options;
     ThreadPool&                                     threads;

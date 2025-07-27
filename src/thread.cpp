@@ -237,10 +237,11 @@ size_t ThreadPool::num_threads() const { return threads.size(); }
 
 // Wakes up main thread waiting in idle_loop() and returns immediately.
 // Main thread will wake up other threads and start the search.
-void ThreadPool::start_thinking(const OptionsMap&  options,
-                                Position&          pos,
-                                StateListPtr&      states,
-                                Search::LimitsType limits) {
+void ThreadPool::start_thinking(const OptionsMap&             options,
+                                Position&                     pos,
+                                StateListPtr&                 states,
+                                const Search::PrehistoryList& prehistory,
+                                Search::LimitsType            limits) {
 
     main_thread()->wait_for_search_finished();
 
@@ -287,8 +288,9 @@ void ThreadPool::start_thinking(const OptionsMap&  options,
             th->worker->rootDepth = th->worker->completedDepth = 0;
             th->worker->rootMoves                              = rootMoves;
             th->worker->rootPos.set(pos.fen(), pos.is_chess960(), &th->worker->rootState);
-            th->worker->rootState = setupStates->back();
-            th->worker->tbConfig  = tbConfig;
+            th->worker->rootState  = setupStates->back();
+            th->worker->tbConfig   = tbConfig;
+            th->worker->prehistory = prehistory;
         });
     }
 

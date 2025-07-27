@@ -154,7 +154,7 @@ void Engine::go(Search::LimitsType& limits) {
     assert(limits.perft == 0);
     verify_networks();
 
-    threads.start_thinking(options, pos, states, limits);
+    threads.start_thinking(options, pos, states, prehistory, limits);
 }
 void Engine::stop() { threads.stop = true; }
 
@@ -194,6 +194,7 @@ void Engine::set_position(const std::string& fen, const std::vector<std::string>
     // Drop the old state and create a new one
     states = StateListPtr(new std::deque<StateInfo>(1));
     pos.set(fen, options["UCI_Chess960"], &states->back());
+    prehistory.clear();
 
     for (const auto& move : moves)
     {
@@ -201,6 +202,13 @@ void Engine::set_position(const std::string& fen, const std::vector<std::string>
 
         if (m == Move::none())
             break;
+
+        Search::PrehistoryInfo phi;
+        phi.inCheck    = pos.checkers();
+        phi.capture    = pos.capture(m);
+        phi.movedPiece = pos.moved_piece(m);
+        phi.moveTo     = m.to_sq();
+        prehistory.push_back(phi);
 
         states->emplace_back();
         pos.do_move(m, states->back());
