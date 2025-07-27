@@ -347,6 +347,8 @@ class Worker {
     // The main thread has a SearchManager, the others have a NullSearchManager
     std::unique_ptr<ISearchManager> manager;
 
+    std::array<StateInfo, MAX_PLY + 10> sts;
+
     Tablebases::Config tbConfig;
 
     const OptionsMap&                               options;

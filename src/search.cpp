@@ -596,8 +596,7 @@ Value Search::Worker::search(
     assert(0 < depth && depth < MAX_PLY);
     assert(!(PvNode && cutNode));
 
-    Move      pv[MAX_PLY + 1];
-    StateInfo st;
+    Move pv[MAX_PLY + 1];
 
     Key   posKey;
     Move  move, excludedMove, bestMove;
@@ -695,7 +694,7 @@ Value Search::Worker::search(
             if (depth >= 8 && ttData.move && pos.pseudo_legal(ttData.move) && pos.legal(ttData.move)
                 && !is_decisive(ttData.value))
             {
-                do_move(pos, ttData.move, st);
+                do_move(pos, ttData.move, sts[ss->ply]);
                 Key nextPosKey                             = pos.key();
                 auto [ttHitNext, ttDataNext, ttWriterNext] = tt.probe(nextPosKey);
                 undo_move(pos, ttData.move);
@@ -859,7 +858,7 @@ Value Search::Worker::search(
         ss->continuationHistory           = &continuationHistory[0][0][NO_PIECE][0];
         ss->continuationCorrectionHistory = &continuationCorrectionHistory[NO_PIECE][0];
 
-        do_null_move(pos, st);
+        do_null_move(pos, sts[ss->ply]);
 
         Value nullValue = -search<NonPV>(pos, ss + 1, -beta, -beta + 1, depth - R, false);
 
@@ -920,7 +919,7 @@ Value Search::Worker::search(
 
             movedPiece = pos.moved_piece(move);
 
-            do_move(pos, move, st);
+            do_move(pos, move, sts[ss->ply]);
 
             ss->currentMove = move;
             ss->continuationHistory =
@@ -1161,7 +1160,7 @@ moves_loop:  // When in check, search starts here
         }
 
         // Step 16. Make the move
-        do_move(pos, move, st, givesCheck);
+        do_move(pos, move, sts[ss->ply], givesCheck);
 
         // Add extension to new depth
         newDepth += extension;
@@ -1498,8 +1497,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
             return alpha;
     }
 
-    Move      pv[MAX_PLY + 1];
-    StateInfo st;
+    Move pv[MAX_PLY + 1];
 
     Key   posKey;
     Move  move, bestMove;
@@ -1660,7 +1658,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
         // Step 7. Make and search the move
         Piece movedPiece = pos.moved_piece(move);
 
-        do_move(pos, move, st, givesCheck);
+        do_move(pos, move, sts[ss->ply], givesCheck);
 
         // Update the current move
         ss->currentMove = move;

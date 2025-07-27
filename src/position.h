@@ -63,10 +63,9 @@ struct StateInfo {
 
 // A list to keep track of the position states along the setup moves (from the
 // start position to the position just before the search starts). Needed by
-// 'draw by repetition' detection. Use a std::deque because pointers to
-// elements are not invalidated upon list resizing.
-using StateListPtr = std::unique_ptr<std::deque<StateInfo>>;
-
+// 'draw by repetition' detection. Use a std::unique<StateInfo[]> to prevent
+// unintentional resizing.
+using StateListPtr = std::unique_ptr<StateInfo[]>;
 
 // Position class stores information regarding the board representation as
 // pieces, side to move, hash keys, castling info, etc. Important methods are
