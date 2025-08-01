@@ -51,20 +51,6 @@
 
 namespace Stockfish {
 
-int ttMoveBonusBase        = 811;
-int ttMoveBonusScale       = 0;
-int ttMoveBonusMax         = 1500;
-int ttMoveMalusBase        = -848;
-int ttMoveMalusScale       = 0;
-int ttMoveBonusMin         = -1500;
-int priorCaptureBonusBase  = 1042;
-int priorCaptureBonusScale = 0;
-int priorCaptureBonusMax   = 1500;
-
-TUNE(ttMoveBonusBase, ttMoveMalusBase, priorCaptureBonusBase);
-TUNE(SetRange(-200, 200), ttMoveBonusScale, ttMoveMalusScale, priorCaptureBonusScale);
-TUNE(ttMoveBonusMax, ttMoveBonusMin, priorCaptureBonusMax);
-
 namespace TB = Tablebases;
 
 void syzygy_extend_pv(const OptionsMap&            options,
@@ -1413,11 +1399,8 @@ moves_loop:  // When in check, search starts here
         update_all_stats(pos, ss, *this, bestMove, prevSq, quietsSearched, capturesSearched, depth,
                          ttData.move, moveCount);
         if (!PvNode)
-            ttMoveHistory << (bestMove == ttData.move
-                                ? std::min(ttMoveBonusBase + ttMoveBonusScale * depth,
-                                           ttMoveBonusMax)
-                                : std::max(ttMoveMalusBase + ttMoveMalusScale * depth,
-                                           ttMoveBonusMin));
+            ttMoveHistory << (bestMove == ttData.move ? std::max(0, 790 - 2785 * depth / 1024)
+                                                      : std::min(0, -914 + 4639 * depth / 1024));
     }
 
     // Bonus for prior quiet countermove that caused the fail low
@@ -1450,7 +1433,7 @@ moves_loop:  // When in check, search starts here
         Piece capturedPiece = pos.captured_piece();
         assert(capturedPiece != NO_PIECE);
         captureHistory[pos.piece_on(prevSq)][prevSq][type_of(capturedPiece)]
-          << std::min(priorCaptureBonusBase + priorCaptureBonusScale * depth, priorCaptureBonusMax);
+          << std::max(0, 1004 - 7731 * depth / 1024);
     }
 
     if (PvNode)
