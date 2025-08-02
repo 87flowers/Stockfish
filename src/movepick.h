@@ -55,8 +55,8 @@ class MovePicker {
    private:
     template<typename Pred>
     Move select(Pred);
-    template<GenType T>
-    ExtMove* score(MoveList<T>&);
+    template<GenType>
+    void     score();
     ExtMove* begin() { return cur; }
     ExtMove* end() { return endCur; }
 
