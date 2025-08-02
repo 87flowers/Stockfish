@@ -25,6 +25,10 @@
 #include "uci.h"
 #include "tune.h"
 
+#ifndef USE_AVX512ICL
+    #error "AVX512ICL Only"
+#endif
+
 using namespace Stockfish;
 
 int main(int argc, char* argv[]) {
