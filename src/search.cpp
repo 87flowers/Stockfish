@@ -72,7 +72,7 @@ using SearchedList                  = ValueList<Move, SEARCHEDLIST_CAPACITY>;
 // so changing them or adding conditions that are similar requires
 // tests at these types of time controls.
 
-int correction_value(const Worker& w, const Position& pos, const Stack* const ss) {
+int correction_value(const Worker& w, const Position& pos, Stack* const ss) {
     const Color us    = pos.side_to_move();
     const auto  m     = (ss - 1)->currentMove;
     const auto  pcv   = w.pawnCorrectionHistory[pawn_correction_history_index(pos)][us];
@@ -83,7 +83,13 @@ int correction_value(const Worker& w, const Position& pos, const Stack* const ss
       m.is_ok() ? (*(ss - 2)->continuationCorrectionHistory)[pos.piece_on(m.to_sq())][m.to_sq()]
                  : 0;
 
-    return 8867 * pcv + 8136 * micv + 10757 * (wnpcv + bnpcv) + 7232 * cntcv;
+    Value base = 8867 * pcv + 8136 * micv + 10757 * (wnpcv + bnpcv) + 7232 * cntcv;
+
+    Value corrGrad   = base - (ss - 2)->correctionValue;
+    ss->corrSqWeight = 0.9 * (ss - 2)->corrSqWeight + 0.1 * corrGrad * corrGrad;
+    Value delta      = -corrGrad * 8 / std::sqrt(ss->corrSqWeight + 1e-10);
+
+    return ss->correctionValue = base + delta;
 }
 
 // Add correctionHistory value to raw staticEval and guarantee evaluation
@@ -260,6 +266,8 @@ void Search::Worker::iterative_deepening() {
           &continuationHistory[0][0][NO_PIECE][0];  // Use as a sentinel
         (ss - i)->continuationCorrectionHistory = &continuationCorrectionHistory[NO_PIECE][0];
         (ss - i)->staticEval                    = VALUE_NONE;
+        (ss - i)->correctionValue               = 0;
+        (ss - i)->corrSqWeight                  = 0.0;
     }
 
     for (int i = 0; i <= MAX_PLY + 2; ++i)
@@ -866,6 +874,8 @@ Value Search::Worker::search(
         ss->currentMove                   = Move::null();
         ss->continuationHistory           = &continuationHistory[0][0][NO_PIECE][0];
         ss->continuationCorrectionHistory = &continuationCorrectionHistory[NO_PIECE][0];
+        ss->correctionValue               = (ss - 2)->correctionValue;
+        ss->corrSqWeight                  = (ss - 2)->corrSqWeight;
 
         do_null_move(pos, st);
 

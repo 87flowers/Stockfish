@@ -76,6 +76,8 @@ struct Stack {
     int                         cutoffCnt;
     int                         reduction;
     int                         quietMoveStreak;
+    Value                       correctionValue;
+    double                      corrSqWeight;
 };
 
 
