@@ -77,7 +77,6 @@ struct Stack {
     int                         reduction;
     int                         quietMoveStreak;
     Value                       correctionValue;
-    double                      corrSqWeight;
 };
 
 

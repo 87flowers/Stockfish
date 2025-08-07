@@ -83,11 +83,9 @@ int correction_value(const Worker& w, const Position& pos, Stack* const ss) {
       m.is_ok() ? (*(ss - 2)->continuationCorrectionHistory)[pos.piece_on(m.to_sq())][m.to_sq()]
                  : 0;
 
-    Value base = 8867 * pcv + 8136 * micv + 10757 * (wnpcv + bnpcv) + 7232 * cntcv;
-
-    Value corrGrad   = base - (ss - 2)->correctionValue;
-    ss->corrSqWeight = 0.9 * (ss - 2)->corrSqWeight + 0.1 * corrGrad * corrGrad;
-    Value delta      = -corrGrad * 8 / std::sqrt(ss->corrSqWeight + 1e-10);
+    Value prev  = (ss - 2)->correctionValue;
+    Value base  = 8867 * pcv + 8136 * micv + 10757 * (wnpcv + bnpcv) + 7232 * cntcv;
+    Value delta = (base - prev) / 10;
 
     return ss->correctionValue = base + delta;
 }
@@ -267,7 +265,6 @@ void Search::Worker::iterative_deepening() {
         (ss - i)->continuationCorrectionHistory = &continuationCorrectionHistory[NO_PIECE][0];
         (ss - i)->staticEval                    = VALUE_NONE;
         (ss - i)->correctionValue               = 0;
-        (ss - i)->corrSqWeight                  = 0.0;
     }
 
     for (int i = 0; i <= MAX_PLY + 2; ++i)
@@ -875,7 +872,6 @@ Value Search::Worker::search(
         ss->continuationHistory           = &continuationHistory[0][0][NO_PIECE][0];
         ss->continuationCorrectionHistory = &continuationCorrectionHistory[NO_PIECE][0];
         ss->correctionValue               = (ss - 2)->correctionValue;
-        ss->corrSqWeight                  = (ss - 2)->corrSqWeight;
 
         do_null_move(pos, st);
 
@@ -1550,13 +1546,12 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
         return ttData.value;
 
     // Step 4. Static evaluation of the position
-    Value unadjustedStaticEval = VALUE_NONE;
+    Value      unadjustedStaticEval = VALUE_NONE;
+    const auto correctionValue      = correction_value(*this, pos, ss);
     if (ss->inCheck)
         bestValue = futilityBase = -VALUE_INFINITE;
     else
     {
-        const auto correctionValue = correction_value(*this, pos, ss);
-
         if (ss->ttHit)
         {
             // Never assume anything about values stored in TT
