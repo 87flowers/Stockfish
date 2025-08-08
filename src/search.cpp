@@ -87,6 +87,9 @@ int correction_value(const Worker& w, const Position& pos, Stack* const ss) {
     Value base  = 8867 * pcv + 8136 * micv + 10757 * (wnpcv + bnpcv) + 7232 * cntcv;
     Value delta = (base - prev) / 10;
 
+    if ((base ^ prev) < 0)
+        delta = 0;
+
     return ss->correctionValue = base + delta;
 }
 
@@ -871,7 +874,7 @@ Value Search::Worker::search(
         ss->currentMove                   = Move::null();
         ss->continuationHistory           = &continuationHistory[0][0][NO_PIECE][0];
         ss->continuationCorrectionHistory = &continuationCorrectionHistory[NO_PIECE][0];
-        ss->correctionValue               = (ss - 2)->correctionValue;
+        ss->correctionValue               = 0;
 
         do_null_move(pos, st);
 
