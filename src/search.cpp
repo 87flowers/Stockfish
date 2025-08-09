@@ -1199,6 +1199,8 @@ moves_loop:  // When in check, search starts here
         // For first picked move (ttMove) reduce reduction
         if (move == ttData.move)
             r -= 2043;
+        else if (extension > 0)
+            r += 1200;
 
         if (capture)
             ss->statScore = 782 * int(PieceValue[pos.captured_piece()]) / 128
