@@ -917,37 +917,40 @@ Value Search::Worker::search(
         Depth      dynamicReduction = (ss->staticEval - beta) / 300;
         Depth      probCutDepth     = std::max(depth - 5 - dynamicReduction, 0);
 
-        while ((move = mp.next_move()) != Move::none())
+        if (probCutDepth < depth - 1)
         {
-            assert(move.is_ok());
-
-            if (move == excludedMove || !pos.legal(move))
-                continue;
-
-            assert(pos.capture_stage(move));
-
-            movedPiece = pos.moved_piece(move);
-
-            do_move(pos, move, st, ss);
-
-            // Perform a preliminary qsearch to verify that the move holds
-            value = -qsearch<NonPV>(pos, ss + 1, -probCutBeta, -probCutBeta + 1);
-
-            // If the qsearch held, perform the regular search
-            if (value >= probCutBeta && probCutDepth > 0)
-                value = -search<NonPV>(pos, ss + 1, -probCutBeta, -probCutBeta + 1, probCutDepth,
-                                       !cutNode);
-
-            undo_move(pos, move);
-
-            if (value >= probCutBeta)
+            while ((move = mp.next_move()) != Move::none())
             {
-                // Save ProbCut data into transposition table
-                ttWriter.write(posKey, value_to_tt(value, ss->ply), ss->ttPv, BOUND_LOWER,
-                               probCutDepth + 1, move, unadjustedStaticEval, tt.generation());
+                assert(move.is_ok());
 
-                if (!is_decisive(value))
-                    return value - (probCutBeta - beta);
+                if (move == excludedMove || !pos.legal(move))
+                    continue;
+
+                assert(pos.capture_stage(move));
+
+                movedPiece = pos.moved_piece(move);
+
+                do_move(pos, move, st, ss);
+
+                // Perform a preliminary qsearch to verify that the move holds
+                value = -qsearch<NonPV>(pos, ss + 1, -probCutBeta, -probCutBeta + 1);
+
+                // If the qsearch held, perform the regular search
+                if (value >= probCutBeta && probCutDepth > 0)
+                    value = -search<NonPV>(pos, ss + 1, -probCutBeta, -probCutBeta + 1,
+                                           probCutDepth, !cutNode);
+
+                undo_move(pos, move);
+
+                if (value >= probCutBeta)
+                {
+                    // Save ProbCut data into transposition table
+                    ttWriter.write(posKey, value_to_tt(value, ss->ply), ss->ttPv, BOUND_LOWER,
+                                   probCutDepth + 1, move, unadjustedStaticEval, tt.generation());
+
+                    if (!is_decisive(value))
+                        return value - (probCutBeta - beta);
+                }
             }
         }
     }
