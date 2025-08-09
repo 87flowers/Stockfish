@@ -901,11 +901,19 @@ Value Search::Worker::search(
     if (!allNode && depth >= 6 && !ttData.move && priorReduction <= 3)
         depth--;
 
-    // Step 11. ProbCut
+moves_loop:  // When in check, search starts here
+
+    // Step 11. A small Probcut idea
+    probCutBeta = beta + 417;
+    if ((ttData.bound & BOUND_LOWER) && ttData.depth >= depth - 4 && ttData.value >= probCutBeta
+        && !is_decisive(beta) && is_valid(ttData.value) && !is_decisive(ttData.value))
+        return probCutBeta;
+
+    // Step 12. ProbCut
     // If we have a good enough capture (or queen promotion) and a reduced search
     // returns a value much above beta, we can (almost) safely prune the previous move.
     probCutBeta = beta + 215 - 60 * improving;
-    if (depth >= 3
+    if (!ss->inCheck && depth >= 3
         && !is_decisive(beta)
         // If value from transposition table is lower than probCutBeta, don't attempt
         // probCut there
@@ -951,14 +959,6 @@ Value Search::Worker::search(
             }
         }
     }
-
-moves_loop:  // When in check, search starts here
-
-    // Step 12. A small Probcut idea
-    probCutBeta = beta + 417;
-    if ((ttData.bound & BOUND_LOWER) && ttData.depth >= depth - 4 && ttData.value >= probCutBeta
-        && !is_decisive(beta) && is_valid(ttData.value) && !is_decisive(ttData.value))
-        return probCutBeta;
 
     const PieceToHistory* contHist[] = {
       (ss - 1)->continuationHistory, (ss - 2)->continuationHistory, (ss - 3)->continuationHistory,
