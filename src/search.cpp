@@ -613,6 +613,7 @@ Value Search::Worker::search(
     bool  capture, ttCapture;
     int   priorReduction;
     Piece movedPiece;
+    bool  hadNegativeSingularExtension = false;
 
     SearchedList capturesSearched;
     SearchedList quietsSearched;
@@ -1162,6 +1163,9 @@ moves_loop:  // When in check, search starts here
             // over current beta
             else if (cutNode)
                 extension = -2;
+
+            if (extension < 0)
+                hadNegativeSingularExtension = true;
         }
 
         // Step 16. Make the move
@@ -1199,6 +1203,8 @@ moves_loop:  // When in check, search starts here
         // For first picked move (ttMove) reduce reduction
         if (move == ttData.move)
             r -= 2043;
+        else if (hadNegativeSingularExtension)
+            r += 750;
 
         if (capture)
             ss->statScore = 782 * int(PieceValue[pos.captured_piece()]) / 128
