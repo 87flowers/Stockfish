@@ -1201,7 +1201,7 @@ moves_loop:  // When in check, search starts here
             r -= 2043;
 
         if (!bestMove && !allNode && moveCount >= 2)
-            r -= 512;
+            r -= 1124 - 50 * moveCount;
 
         if (capture)
             ss->statScore = 782 * int(PieceValue[pos.captured_piece()]) / 128
