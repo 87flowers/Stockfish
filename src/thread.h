@@ -132,7 +132,7 @@ class ThreadPool {
     void   start_thinking(const OptionsMap&,
                           Position&,
                           StateListPtr&,
-                          const Search::PrehistoryList&,
+                          const Search::PrehistoryList*,
                           Search::LimitsType);
     void   run_on_thread(size_t threadId, std::function<void()> f);
     void   wait_on_thread(size_t threadId);

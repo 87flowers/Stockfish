@@ -360,7 +360,7 @@ class Worker {
 
     Tablebases::Config tbConfig;
 
-    PrehistoryList prehistory;
+    const Search::PrehistoryList* prehistory;
 
     const OptionsMap&                               options;
     ThreadPool&                                     threads;

@@ -240,7 +240,7 @@ size_t ThreadPool::num_threads() const { return threads.size(); }
 void ThreadPool::start_thinking(const OptionsMap&             options,
                                 Position&                     pos,
                                 StateListPtr&                 states,
-                                const Search::PrehistoryList& prehistory,
+                                const Search::PrehistoryList* prehistory,
                                 Search::LimitsType            limits) {
 
     main_thread()->wait_for_search_finished();

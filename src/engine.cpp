@@ -154,7 +154,7 @@ void Engine::go(Search::LimitsType& limits) {
     assert(limits.perft == 0);
     verify_networks();
 
-    threads.start_thinking(options, pos, states, prehistory, limits);
+    threads.start_thinking(options, pos, states, &prehistory, limits);
 }
 void Engine::stop() { threads.stop = true; }
 

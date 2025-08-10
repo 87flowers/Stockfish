@@ -255,11 +255,11 @@ void Search::Worker::iterative_deepening() {
     Stack* ss                  = stack + 7;
 
     {
-        auto phi = prehistory.rbegin();
+        auto phi = prehistory->rbegin();
 
         for (int i = 1; i <= 7; ++i)
         {
-            if (phi != prehistory.rend())
+            if (phi != prehistory->rend())
             {
                 (ss - i)->continuationHistory =
                   &continuationHistory[phi->inCheck][phi->capture][phi->movedPiece][phi->moveTo];
