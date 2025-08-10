@@ -1200,7 +1200,7 @@ moves_loop:  // When in check, search starts here
         if (move == ttData.move)
             r -= 2043;
 
-        if (!bestMove && cutNode)
+        if (!bestMove && !allNode && moveCount >= 2)
             r -= 512;
 
         if (capture)
