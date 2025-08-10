@@ -1200,8 +1200,8 @@ moves_loop:  // When in check, search starts here
         if (move == ttData.move)
             r -= 2043;
 
-        if (!bestMove && moveCount >= 2)
-            r -= 512 + 512 * (ss->ttPv || PvNode);
+        if (!bestMove && cutNode)
+            r -= 512;
 
         if (capture)
             ss->statScore = 782 * int(PieceValue[pos.captured_piece()]) / 128
