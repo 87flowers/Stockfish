@@ -860,7 +860,7 @@ small_probcut:
     probCutBeta = beta + 417;
     if ((ttData.bound & BOUND_LOWER) && ttData.depth >= depth - 4 && ttData.value >= probCutBeta
         && !is_decisive(beta) && is_valid(ttData.value) && !is_decisive(ttData.value))
-        return ttData.value;
+        return probCutBeta;
 
     if (ss->inCheck)
         goto moves_loop;
