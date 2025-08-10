@@ -778,7 +778,7 @@ Value Search::Worker::search(
         // Skip early pruning when in check
         ss->staticEval = eval = (ss - 2)->staticEval;
         improving             = false;
-        goto moves_loop;
+        goto small_probcut;
     }
     else if (excludedMove)
         unadjustedStaticEval = eval = ss->staticEval;
@@ -853,7 +853,19 @@ Value Search::Worker::search(
             return beta + (eval - beta) / 3;
     }
 
-    // Step 9. Null move search with verification search
+// Skip over all other pruning when in check
+small_probcut:
+
+    // Step 9. A small Probcut idea
+    probCutBeta = beta + 417;
+    if ((ttData.bound & BOUND_LOWER) && ttData.depth >= depth - 4 && ttData.value >= probCutBeta
+        && !is_decisive(beta) && is_valid(ttData.value) && !is_decisive(ttData.value))
+        return ttData.value;
+
+    if (ss->inCheck)
+        goto moves_loop;
+
+    // Step 10. Null move search with verification search
     if (cutNode && ss->staticEval >= beta - 19 * depth + 403 && !excludedMove
         && pos.non_pawn_material(us) && ss->ply >= nmpMinPly && !is_loss(beta))
     {
@@ -895,25 +907,17 @@ Value Search::Worker::search(
 
     improving |= ss->staticEval >= beta;
 
-    // Step 10. Internal iterative reductions
+    // Step 11. Internal iterative reductions
     // At sufficient depth, reduce depth for PV/Cut nodes without a TTMove.
     // (*Scaler) Especially if they make IIR less aggressive.
     if (!allNode && depth >= 6 && !ttData.move && priorReduction <= 3)
         depth--;
 
-moves_loop:  // When in check, search starts here
-
-    // Step 11. A small Probcut idea
-    probCutBeta = beta + 417;
-    if ((ttData.bound & BOUND_LOWER) && ttData.depth >= depth - 4 && ttData.value >= probCutBeta
-        && !is_decisive(beta) && is_valid(ttData.value) && !is_decisive(ttData.value))
-        return ttData.value;
-
     // Step 12. ProbCut
     // If we have a good enough capture (or queen promotion) and a reduced search
     // returns a value much above beta, we can (almost) safely prune the previous move.
     probCutBeta = beta + 215 - 60 * improving;
-    if (!ss->inCheck && depth >= 3
+    if (depth >= 3
         && !is_decisive(beta)
         // If value from transposition table is lower than probCutBeta, don't attempt
         // probCut there
@@ -959,6 +963,8 @@ moves_loop:  // When in check, search starts here
             }
         }
     }
+
+moves_loop:
 
     const PieceToHistory* contHist[] = {
       (ss - 1)->continuationHistory, (ss - 2)->continuationHistory, (ss - 3)->continuationHistory,
