@@ -955,9 +955,9 @@ Value Search::Worker::search(
 moves_loop:  // When in check, search starts here
 
     // Step 12. A small Probcut idea
-    probCutBeta = beta + 417;
-    if ((ttData.bound & BOUND_LOWER) && ttData.depth >= depth - 4 && ttData.value >= probCutBeta
-        && !is_decisive(beta) && is_valid(ttData.value) && !is_decisive(ttData.value))
+    probCutBeta = beta + 17 + 100 * std::max(4, depth - ttData.depth);
+    if ((ttData.bound & BOUND_LOWER) && ttData.value >= probCutBeta && !is_decisive(beta)
+        && is_valid(ttData.value) && !is_decisive(ttData.value))
         return probCutBeta;
 
     const PieceToHistory* contHist[] = {
