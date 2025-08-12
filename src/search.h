@@ -70,12 +70,14 @@ struct Stack {
     Value                       staticEval;
     int                         statScore;
     int                         moveCount;
-    bool                        inCheck;
-    bool                        ttPv;
-    bool                        ttHit;
     int                         cutoffCnt;
     int                         reduction;
     int                         quietMoveStreak;
+    bool                        inCheck;
+    bool                        ttPv;
+    bool                        ttHit;
+    bool                        currentMoveWasCapture;
+    Piece                       currentMovedPiece;
 };
 
 
@@ -285,12 +287,14 @@ class Worker {
 
     CapturePieceToHistory captureHistory;
     ContinuationHistory   continuationHistory[2][2];
+    ContinuationHistory   nullContinuationHistory[2][2];
     PawnHistory           pawnHistory;
 
     CorrectionHistory<Pawn>         pawnCorrectionHistory;
     CorrectionHistory<Minor>        minorPieceCorrectionHistory;
     CorrectionHistory<NonPawn>      nonPawnCorrectionHistory;
     CorrectionHistory<Continuation> continuationCorrectionHistory;
+    CorrectionHistory<Continuation> nullContinuationCorrectionHistory;
 
     TTMoveHistory ttMoveHistory;
 

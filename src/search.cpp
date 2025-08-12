@@ -255,8 +255,11 @@ void Search::Worker::iterative_deepening() {
 
     for (int i = 7; i > 0; --i)
     {
-        (ss - i)->continuationHistory =
-          &continuationHistory[0][0][NO_PIECE][0];  // Use as a sentinel
+        (ss - i)->inCheck                       = false;
+        (ss - i)->currentMove                   = Move::null();
+        (ss - i)->currentMoveWasCapture         = false;
+        (ss - i)->currentMovedPiece             = NO_PIECE;
+        (ss - i)->continuationHistory           = &continuationHistory[0][0][NO_PIECE][0];
         (ss - i)->continuationCorrectionHistory = &continuationCorrectionHistory[NO_PIECE][0];
         (ss - i)->staticEval                    = VALUE_NONE;
     }
@@ -526,8 +529,10 @@ void Search::Worker::do_move(
     accumulatorStack.push(dp);
     if (ss != nullptr)
     {
-        ss->currentMove         = move;
-        ss->continuationHistory = &continuationHistory[ss->inCheck][capture][dp.pc][move.to_sq()];
+        ss->currentMove           = move;
+        ss->currentMoveWasCapture = capture;
+        ss->currentMovedPiece     = dp.pc;
+        ss->continuationHistory   = &continuationHistory[ss->inCheck][capture][dp.pc][move.to_sq()];
         ss->continuationCorrectionHistory = &continuationCorrectionHistory[dp.pc][move.to_sq()];
     }
 }
@@ -862,9 +867,13 @@ Value Search::Worker::search(
         // Null move dynamic reduction based on depth
         Depth R = 7 + depth / 3;
 
-        ss->currentMove                   = Move::null();
-        ss->continuationHistory           = &continuationHistory[0][0][NO_PIECE][0];
-        ss->continuationCorrectionHistory = &continuationCorrectionHistory[NO_PIECE][0];
+        ss->currentMove = Move::null();
+        ss->continuationHistory =
+          &nullContinuationHistory[(ss - 2)->inCheck][(ss - 2)->currentMoveWasCapture]
+                                  [(ss - 2)->currentMovedPiece][(ss - 2)->currentMove.to_sq()];
+        ss->continuationCorrectionHistory =
+          &nullContinuationCorrectionHistory[(ss - 2)->currentMovedPiece]
+                                            [(ss - 2)->currentMove.to_sq()];
 
         do_null_move(pos, st);
 
