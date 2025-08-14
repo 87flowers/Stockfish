@@ -1096,7 +1096,7 @@ moves_loop:  // When in check, search starts here
                 lmrDepth = std::max(lmrDepth, 0);
 
                 // Prune moves with negative SEE
-                if (!pos.see_ge(move, -(26 + 100 * ss->ttPv) * lmrDepth * lmrDepth))
+                if (!pos.see_ge(move, -(26 + 26 * ss->ttPv + 50 * PvNode) * lmrDepth * lmrDepth))
                     continue;
             }
         }
