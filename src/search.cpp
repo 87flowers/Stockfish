@@ -946,6 +946,9 @@ Value Search::Worker::search(
                 ttWriter.write(posKey, value_to_tt(value, ss->ply), ss->ttPv, BOUND_LOWER,
                                probCutDepth + 1, move, unadjustedStaticEval, tt.generation());
 
+                captureHistory[pos.moved_piece(move)][move.to_sq()][pos.piece_on(move.to_sq())]
+                  << std::min(60 * probCutDepth, 600);
+
                 if (!is_decisive(value))
                     return value - (probCutBeta - beta);
             }
