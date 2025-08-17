@@ -832,6 +832,14 @@ Value Search::Worker::search(
     // Step 7. Razoring
     // If eval is really low, skip search entirely and return the qsearch value.
     // For PvNodes, we must have a guard against mates being returned.
+    /*
+Mean #0: Total 1389713 Mean 274.896
+Mean #1: Total 1389713 Mean 68.3448
+Mean #2: Total 1389713 Mean 550.283
+    */
+    dbg_mean_of(std::abs(correctionValue) / 32000, 0);
+    dbg_mean_of(std::abs(correctionValue) / 128000, 1);
+    dbg_mean_of(std::abs(correctionValue) / 16000, 2);
     // if (!PvNode && eval < alpha - 254 - std::abs(correctionValue) / 32000 - 290 * depth * depth)
     if (!PvNode && eval < alpha - 514 - 294 * depth * depth)
         return qsearch<NonPV>(pos, ss, alpha, beta);
