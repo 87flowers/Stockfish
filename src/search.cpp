@@ -1656,7 +1656,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
 
         moveCount2++;
 
-        if (!is_loss(bestValue) && !ss->inCheck && moveCount2 >= 6)
+        if (!is_loss(bestValue) && !ss->inCheck && moveCount2 >= 7)
             break;
 
         // Step 7. Make and search the move
