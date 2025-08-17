@@ -1078,6 +1078,16 @@ moves_loop:  // When in check, search starts here
 
                 lmrDepth += history / 3233;
 
+                int badHistCount = ((*contHist[0])[movedPiece][move.to_sq()] < -700)
+                                 + ((*contHist[1])[movedPiece][move.to_sq()] < -700)
+                                 + ((*contHist[2])[movedPiece][move.to_sq()] < -700)
+                                 + ((*contHist[3])[movedPiece][move.to_sq()] < -700)
+                                 + ((*contHist[4])[movedPiece][move.to_sq()] < -700)
+                                 + ((*contHist[5])[movedPiece][move.to_sq()] < -700);
+
+                if (lmrDepth <= 4096 && badHistCount >= 5)
+                    continue;
+
                 Value baseFutility = (bestMove ? 46 : 230);
                 Value futilityValue =
                   ss->staticEval + baseFutility + 131 * lmrDepth + 91 * (ss->staticEval > alpha);
