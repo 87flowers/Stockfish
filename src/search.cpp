@@ -121,15 +121,17 @@ void  update_pv(Move* pv, Move move, const Move* childPv);
 void  update_continuation_histories(Stack* ss, Piece pc, Square to, int bonus);
 void  update_quiet_histories(
    const Position& pos, Stack* ss, Search::Worker& workerThread, Move move, int bonus);
-void update_all_stats(const Position& pos,
-                      Stack*          ss,
-                      Search::Worker& workerThread,
-                      Move            bestMove,
-                      Square          prevSq,
-                      SearchedList&   quietsSearched,
-                      SearchedList&   capturesSearched,
-                      Depth           depth,
-                      Move            TTMove);
+Move& lookup_continuation_move(Search::Worker& workerThread, Stack* ss);
+void  update_continuation_move(Search::Worker& workerThread, Stack* ss, Move move);
+void  update_all_stats(const Position& pos,
+                       Stack*          ss,
+                       Search::Worker& workerThread,
+                       Move            bestMove,
+                       Square          prevSq,
+                       SearchedList&   quietsSearched,
+                       SearchedList&   capturesSearched,
+                       Depth           depth,
+                       Move            TTMove);
 
 }  // namespace
 
@@ -550,6 +552,7 @@ void Search::Worker::clear() {
     pawnCorrectionHistory.fill(5);
     minorPieceCorrectionHistory.fill(0);
     nonPawnCorrectionHistory.fill(0);
+    continuationMoves.fill(Move::none());
 
     ttMoveHistory = 0;
 
@@ -966,7 +969,7 @@ moves_loop:  // When in check, search starts here
 
 
     MovePicker mp(pos, ttData.move, depth, &mainHistory, &lowPlyHistory, &captureHistory, contHist,
-                  &pawnHistory, ss->ply);
+                  &pawnHistory, lookup_continuation_move(*this, ss), ss->ply);
 
     value = bestValue;
 
@@ -1596,7 +1599,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
     // the moves. We presently use two stages of move generator in quiescence search:
     // captures, or evasions only when in check.
     MovePicker mp(pos, ttData.move, DEPTH_QS, &mainHistory, &lowPlyHistory, &captureHistory,
-                  contHist, &pawnHistory, ss->ply);
+                  contHist, &pawnHistory, lookup_continuation_move(*this, ss), ss->ply);
 
     // Step 5. Loop through all pseudo-legal moves until no moves remain or a beta
     // cutoff occurs.
@@ -1823,6 +1826,7 @@ void update_all_stats(const Position& pos,
 
     if (!pos.capture_stage(bestMove))
     {
+        update_continuation_move(workerThread, ss, bestMove);
         update_quiet_histories(pos, ss, workerThread, bestMove, bonus * 957 / 1024);
 
         // Decrease stats for all non-best quiet moves
@@ -1885,6 +1889,24 @@ void update_quiet_histories(
     int pIndex = pawn_history_index(pos);
     workerThread.pawnHistory[pIndex][pos.moved_piece(move)][move.to_sq()]
       << (bonus * (bonus > 0 ? 704 : 439) / 1024) + 70;
+}
+
+// Continuation move history
+
+Move& lookup_continuation_move(Search::Worker& workerThread, Stack* ss) {
+    uint32_t key = 0;
+    key |= (ss - 1)->currentMove.raw();
+    key <<= 16;
+    key |= (ss - 2)->currentMove.raw();
+    key *= 0xF4325C37;
+    key ^= key >> 18;
+    key *= 0x9FB21C65;
+    key ^= key >> 18;
+    return workerThread.continuationMoves[key & (CONTINUATION_MOVE_HISTORY_SIZE - 1)];
+}
+
+void update_continuation_move(Search::Worker& workerThread, Stack* ss, Move move) {
+    lookup_continuation_move(workerThread, ss) = move;
 }
 
 }
