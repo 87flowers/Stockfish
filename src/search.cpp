@@ -529,6 +529,7 @@ void Search::Worker::do_move(
     if (ss != nullptr)
     {
         ss->currentMove         = move;
+        ss->currentMovePiece    = dp.pc;
         ss->continuationHistory = &continuationHistory[ss->inCheck][capture][dp.pc][move.to_sq()];
         ss->continuationCorrectionHistory = &continuationCorrectionHistory[dp.pc][move.to_sq()];
     }
@@ -1894,15 +1895,9 @@ void update_quiet_histories(
 // Continuation move history
 
 Move& lookup_continuation_move(Search::Worker& workerThread, Stack* ss) {
-    uint32_t key = 0;
-    key |= (ss - 1)->currentMove.raw();
-    key <<= 16;
-    key |= (ss - 2)->currentMove.raw();
-    key *= 0xF4325C37;
-    key ^= key >> 18;
-    key *= 0x9FB21C65;
-    key ^= key >> 18;
-    return workerThread.continuationMoves[key & (CONTINUATION_MOVE_HISTORY_SIZE - 1)];
+    return workerThread
+      .continuationMoves[(ss - 1)->currentMovePiece][(ss - 1)->currentMove.to_sq()]
+                        [(ss - 2)->currentMovePiece][(ss - 2)->currentMove.to_sq()];
 }
 
 void update_continuation_move(Search::Worker& workerThread, Stack* ss, Move move) {
