@@ -1193,6 +1193,11 @@ moves_loop:  // When in check, search starts here
         if ((ss + 1)->cutoffCnt > 2)
             r += 1041 + 34 * msb(depth) + allNode * (752 + 226 * msb(depth));
 
+        // Increase reduction if reversible move played at high 50mr clock
+        if (pos.rule50_count() > 50 && type_of(movedPiece) != PAWN && move.type_of() == NORMAL
+            && !capture)
+            r += 50 + 10 * (pos.rule50_count() - 50);
+
         r += (ss + 1)->quietMoveStreak * 50;
 
         // For first picked move (ttMove) reduce reduction
