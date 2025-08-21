@@ -1164,10 +1164,9 @@ moves_loop:  // When in check, search starts here
         }
 
         // Increase reduction if reversible move played at high 50mr clock
-        if (pos.rule50_count() > 50 && type_of(movedPiece) != PAWN && move.type_of() == NORMAL
+        if (pos.rule50_count() > 70 && type_of(movedPiece) != PAWN && move.type_of() == NORMAL
             && !capture)
-            r += (3 * pos.rule50_count() * pos.rule50_count() * pos.rule50_count() / 1024)
-               - 7 * pos.rule50_count();
+            r += 100 + 20 * pos.rule50_count();
 
         // Step 16. Make the move
         do_move(pos, move, st, givesCheck, ss);
