@@ -1163,6 +1163,12 @@ moves_loop:  // When in check, search starts here
                 extension = -2;
         }
 
+        // Increase reduction if reversible move played at high 50mr clock
+        if (pos.rule50_count() > 50 && type_of(movedPiece) != PAWN && move.type_of() == NORMAL
+            && !capture)
+            r += (3 * pos.rule50_count() * pos.rule50_count() * pos.rule50_count() / 1024)
+               - 7 * pos.rule50_count();
+
         // Step 16. Make the move
         do_move(pos, move, st, givesCheck, ss);
 
@@ -1192,11 +1198,6 @@ moves_loop:  // When in check, search starts here
         // Increase reduction if next ply has a lot of fail high
         if ((ss + 1)->cutoffCnt > 2)
             r += 1041 + 34 * msb(depth) + allNode * (752 + 226 * msb(depth));
-
-        // Increase reduction if reversible move played at high 50mr clock
-        if (pos.rule50_count() > 50 && type_of(movedPiece) != PAWN && move.type_of() == NORMAL
-            && !capture)
-            r += 50 + 10 * (pos.rule50_count() - 50);
 
         r += (ss + 1)->quietMoveStreak * 50;
 
