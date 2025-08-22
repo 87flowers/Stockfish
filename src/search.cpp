@@ -970,7 +970,8 @@ moves_loop:  // When in check, search starts here
 
     value = bestValue;
 
-    int moveCount = 0;
+    int moveCount             = 0;
+    int irreversibleMoveCount = 0;
 
     // Step 13. Loop through all pseudo-legal moves until no moves remain
     // or a beta cutoff occurs.
@@ -1164,9 +1165,19 @@ moves_loop:  // When in check, search starts here
         }
 
         // Increase reduction if reversible move played at high 50mr clock
-        if (pos.rule50_count() > 50 && type_of(movedPiece) != PAWN && move.type_of() == NORMAL
-            && !capture)
-            r += 20 * (pos.rule50_count() - 50);
+        if (pos.rule50_count() > 50)
+        {
+            if (type_of(movedPiece) == PAWN || move.type_of() != NORMAL || capture)
+            {
+                irreversibleMoveCount++;
+                r -= 1024 / irreversibleMoveCount;
+            }
+            else if (irreversibleMoveCount > 0)
+            {
+                r += (3 * pos.rule50_count() * pos.rule50_count() * pos.rule50_count() / 1024)
+                   - 7 * pos.rule50_count();
+            }
+        }
 
         // Step 16. Make the move
         do_move(pos, move, st, givesCheck, ss);
