@@ -1167,15 +1167,16 @@ moves_loop:  // When in check, search starts here
         // Increase reduction if reversible move played at high 50mr clock
         if (pos.rule50_count() > 50)
         {
+            int rrd = (3 * pos.rule50_count() * pos.rule50_count() * pos.rule50_count() / 1024)
+                    - 7 * pos.rule50_count();
             if (type_of(movedPiece) == PAWN || move.type_of() != NORMAL || capture)
             {
                 irreversibleMoveCount++;
-                r -= 1024 / irreversibleMoveCount;
+                r -= rrd;
             }
             else if (irreversibleMoveCount > 0)
             {
-                r += (3 * pos.rule50_count() * pos.rule50_count() * pos.rule50_count() / 1024)
-                   - 7 * pos.rule50_count();
+                r += rrd;
             }
         }
 
