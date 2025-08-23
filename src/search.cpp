@@ -483,8 +483,10 @@ void Search::Worker::iterative_deepening() {
                 && !mainThread->ponder)
                 threads.stop = true;
 
-            // Stop the search if we have exceeded the totalTime or maximum
-            if (elapsedTime > std::min(totalTime, double(mainThread->tm.maximum())))
+            // Stop the search if we have exceeded the totalTime or maximum,
+            // or if we have researched the same depth several times.
+            if (elapsedTime > std::min(totalTime, double(mainThread->tm.maximum()))
+                || searchAgainCounter >= 2)
             {
                 // If we are allowed to ponder do not stop the search now but
                 // keep pondering until the GUI sends "ponderhit" or "stop".
