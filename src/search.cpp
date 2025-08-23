@@ -1172,7 +1172,7 @@ moves_loop:  // When in check, search starts here
             if (type_of(movedPiece) == PAWN || move.type_of() != NORMAL || capture)
             {
                 irreversibleMoveCount++;
-                r -= rrd;
+                r -= rrd * 4;
             }
             else if (irreversibleMoveCount > 0)
             {
