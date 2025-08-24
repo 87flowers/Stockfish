@@ -1200,7 +1200,7 @@ moves_loop:  // When in check, search starts here
             r -= 2018;
 
         if (!is_decisive(ttData.value) && is_valid(ss->staticEval) && is_valid(ttData.value)
-            && abs(ttData.value - ss->staticEval) < 15)
+            && std::abs(ttData.value - ss->staticEval) < 25 && depth - 4 >= ttData.depth)
             r += 512;
 
         if (capture)
