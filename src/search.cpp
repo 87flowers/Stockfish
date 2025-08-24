@@ -1199,6 +1199,10 @@ moves_loop:  // When in check, search starts here
         if (move == ttData.move)
             r -= 2018;
 
+        if (!is_decisive(ttData.value) && is_valid(ss->staticEval) && is_valid(ttData.value)
+            && abs(ttData.value - ss->staticEval) < 15)
+            r += 512;
+
         if (capture)
             ss->statScore = 803 * int(PieceValue[pos.captured_piece()]) / 128
                           + captureHistory[movedPiece][move.to_sq()][type_of(pos.captured_piece())];
