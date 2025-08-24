@@ -133,7 +133,7 @@ struct Cluster {
         return TTEntryB::from_raw(entry[i]).replace_score(generation8);
     }
 
-#if defined(USE_SSE2)
+#if defined(USE_SSE2) || defined(USE_AVX512)
     __m128i key_vec() const { return _mm_load_si128(reinterpret_cast<__m128i const*>(&key[0])); }
 #endif
 };
@@ -262,7 +262,12 @@ std::tuple<bool, TTData, TTWriter> TranspositionTable::probe(const Key key) cons
     Cluster* const cl    = cluster(key);
     const uint16_t key16 = uint16_t(key);  // Use the low 16 bits as key inside the cluster
 
-#if defined(USE_SSE2)
+#if defined(USE_AVX512)
+    uint8_t mask = _mm_cmpeq_epi16_mask(cl->key_vec(), _mm_set1_epi16(key16));
+    mask &= 0x3F;
+    if (mask)
+        return read(cl, Bit::ctz(static_cast<uint32_t>(mask)));
+#elif defined(USE_SSE2)
     uint32_t mask = _mm_movemask_epi8(_mm_cmpeq_epi16(cl->key_vec(), _mm_set1_epi16(key16)));
     mask &= 0x00AAAAAA;
     if (mask)
