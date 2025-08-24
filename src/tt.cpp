@@ -97,18 +97,18 @@ static_assert(sizeof(TTEntryB) == sizeof(uint64_t));
 // of TTEntry. Each non-empty TTEntry contains information on exactly one position. The size of a Cluster should
 // divide the size of a cache line for best performance, as the cacheline is prefetched when possible.
 
-static constexpr int ClusterSize = 3;
+static constexpr int ClusterSize = 6;
 
 struct Cluster {
     TTEntryB entry[ClusterSize];
     uint16_t key[ClusterSize];
-    char     padding[2];
+    char     padding[4];
 
     void
     save(int i, Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev, uint8_t generation8);
 };
 
-static_assert(sizeof(Cluster) == 32, "Suboptimal Cluster size");
+static_assert(sizeof(Cluster) == 64, "Suboptimal Cluster size");
 
 // Populates the TTEntry with a new node's data, possibly
 // overwriting an old position. The update is not atomic and can be racy.
