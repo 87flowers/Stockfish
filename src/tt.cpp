@@ -121,7 +121,7 @@ static_assert(sizeof(TTEntryB) == sizeof(uint64_t));
 
 static constexpr int ClusterSize = 6;
 
-struct Cluster {
+alignas(64) struct Cluster {
     uint64_t entry[ClusterSize];
     uint16_t key[ClusterSize];
     char     padding[4];
