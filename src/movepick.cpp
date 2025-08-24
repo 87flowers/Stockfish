@@ -18,6 +18,7 @@
 
 #include "movepick.h"
 
+#include <array>
 #include <cassert>
 #include <limits>
 #include <utility>
@@ -129,7 +130,7 @@ ExtMove* MovePicker::score(MoveList<Type>& ml) {
 
     Color us = pos.side_to_move();
 
-    [[maybe_unused]] Bitboard threatByLesser[QUEEN + 1];
+    [[maybe_unused]] std::array<Bitboard, PIECE_TYPE_NB> threatByLesser{};
     if constexpr (Type == QUIETS)
     {
         threatByLesser[KNIGHT] = threatByLesser[BISHOP] = pos.attacks_by<PAWN>(~us);
@@ -170,12 +171,9 @@ ExtMove* MovePicker::score(MoveList<Type>& ml) {
 
             // penalty for moving to a square threatened by a lesser piece
             // or bonus for escaping an attack by a lesser piece.
-            if (KNIGHT <= pt && pt <= QUEEN)
-            {
-                static constexpr int bonus[QUEEN + 1] = {0, 0, 144, 144, 256, 517};
-                int v = threatByLesser[pt] & to ? -95 : 100 * bool(threatByLesser[pt] & from);
-                m.value += bonus[pt] * v;
-            }
+            static constexpr std::array<int, PIECE_TYPE_NB> bonus{0, 0, 144, 144, 256, 517, 0, 0};
+            int v = threatByLesser[pt] & to ? -95 : 100 * bool(threatByLesser[pt] & from);
+            m.value += bonus[pt] * v;
 
             if (ply < LOW_PLY_HISTORY_SIZE)
                 m.value += 8 * (*lowPlyHistory)[ply][m.from_to()] / (1 + ply);
