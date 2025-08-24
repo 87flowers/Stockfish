@@ -24,6 +24,7 @@
 #include <cstring>
 #include <iostream>
 
+#include "bit.h"
 #include "memory.h"
 #include "misc.h"
 #include "syzygy/tbprobe.h"
@@ -228,9 +229,21 @@ std::tuple<bool, TTData, TTWriter> TranspositionTable::probe(const Key key) cons
     Cluster* const cl    = cluster(key);
     const uint16_t key16 = uint16_t(key);  // Use the low 16 bits as key inside the cluster
 
-    for (int i = 0; i < ClusterSize; ++i)
-        if (cl->key[i] == key16)
+    // Find an entry with a matching key
+    {
+        static_assert(ClusterSize == 3);
+
+        uint64_t keys;
+        std::memcpy(&keys, &cl->key[0], sizeof(uint64_t));
+        keys ^= static_cast<uint64_t>(key16) * 0x000100010001;
+
+        // Branchlessly detect match
+        uint64_t keymask = (keys - 0x0001000100010001) & ~keys & 0x8000800080008000;
+        int      i       = Bit::ctz(keymask) / 16;
+
+        if (i < ClusterSize)
             return read(cl, i);
+    }
 
     // Find an entry to be replaced according to the replacement strategy
     int replacei     = 0;
