@@ -38,7 +38,7 @@
     #include <arm_neon.h>
 #endif
 
-#ifdef defined(USE_NEON)
+#if defined(USE_NEON)
 static int8x8_t to8x8(int8_t a) { return vld1_s8(&a); }
 #endif
 
@@ -73,11 +73,11 @@ static constexpr int GENERATION_CYCLE = 255 + GENERATION_DELTA;
 static constexpr int GENERATION_MASK = (0xFF << GENERATION_BITS) & 0xFF;
 
 struct TTEntryB {
+    uint8_t genBound8;
+    int8_t  depth8;
     Move    move16;
     int16_t value16;
     int16_t eval16;
-    uint8_t genBound8;
-    int8_t  depth8;
 
     static TTEntryB from_raw(uint64_t raw) {
         TTEntryB e;
@@ -293,18 +293,6 @@ std::tuple<bool, TTData, TTWriter> TranspositionTable::probe(const Key key) cons
 #endif
     }
 
-#ifdef defined(USE_NEON)
-    int8x16x3_t clVec    = vld1q_s8_x3(reinterpret_cast<int8_t const*>(cl));
-    int8x8_t    nullVec  = to8x8(0x80);
-    int8x8_t    depthVec = vqtbx3_s8(nullVec, clVec, uint8x8_t{0, 8, 16, 24, 32, 40, 48, 56});
-    int8x8_t    genVec   = vqtbx3_s8(nullVec, clVec, uint8x8_t{1, 9, 17, 25, 33, 41, 49, 57});
-    int8x8_t    relativeAge =
-      vand_s8(vsub_s8(to8x8(GENERATION_CYCLE + generation8), genVec), to8x8(GENERATION_MASK));
-    int8x8_t score    = vsub_s8(depthVec, relativeAge);
-    int8_t   maxScore = vmaxv_s8(score);
-    uint64_t mask     = vget_lane_u64(vreinterpret_u64_u8(vceq_s8(score, to8x8(maxScore))), 0);
-    int      replacei = Bit::ctz(mask) / 8;
-#else
     // Find an entry to be replaced according to the replacement strategy
     int replacei     = 0;
     int replacescore = cl->replace_score(replacei, generation8);
@@ -317,7 +305,6 @@ std::tuple<bool, TTData, TTWriter> TranspositionTable::probe(const Key key) cons
             replacescore = currentscore;
         }
     }
-#endif
 
     return {false,
             TTData{Move::none(), VALUE_NONE, VALUE_NONE, DEPTH_ENTRY_OFFSET, BOUND_NONE, false},
