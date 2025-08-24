@@ -66,6 +66,12 @@ struct TTEntryB {
     uint8_t genBound8;
     int8_t  depth8;
 
+    static TTEntryB from_raw(uint64_t raw) {
+        TTEntryB e;
+        std::memcpy(&e, &raw, sizeof(uint64_t));
+        return e;
+    }
+
     Depth depth() const { return Depth(depth8 + DEPTH_ENTRY_OFFSET); }
     Bound bound() const { return Bound(genBound8 & 0x3); }
     bool  is_pv() const { return bool(genBound8 & 0x4); }
@@ -89,6 +95,12 @@ struct TTEntryB {
     int replace_score(const uint8_t generation8) const {
         return depth8 - relative_age(generation8);
     }
+
+    uint64_t to_raw() const {
+        uint64_t raw;
+        std::memcpy(&raw, this, sizeof(uint64_t));
+        return raw;
+    }
 };
 
 static_assert(sizeof(TTEntryB) == sizeof(uint64_t));
@@ -100,12 +112,16 @@ static_assert(sizeof(TTEntryB) == sizeof(uint64_t));
 static constexpr int ClusterSize = 6;
 
 struct Cluster {
-    TTEntryB entry[ClusterSize];
+    uint64_t entry[ClusterSize];
     uint16_t key[ClusterSize];
     char     padding[4];
 
     void
     save(int i, Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev, uint8_t generation8);
+
+    int replace_score(int i, const uint8_t generation8) const {
+        return TTEntryB::from_raw(entry[i]).replace_score(generation8);
+    }
 };
 
 static_assert(sizeof(Cluster) == 64, "Suboptimal Cluster size");
@@ -114,16 +130,16 @@ static_assert(sizeof(Cluster) == 64, "Suboptimal Cluster size");
 // overwriting an old position. The update is not atomic and can be racy.
 void Cluster::save(
   int i, Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev, uint8_t generation8) {
-    const uint16_t oldkey = key[i];
-    TTEntryB       e      = entry[i];
+    const uint16_t oldkey16 = key[i];
+    TTEntryB       e        = TTEntryB::from_raw(entry[i]);
 
     // Preserve the old ttmove if we don't have a new one
-    if (m || uint16_t(k) != oldkey)
+    if (m || uint16_t(k) != oldkey16)
         e.move16 = m;
 
     // Overwrite less valuable entries (cheapest checks first)
-    if (b == BOUND_EXACT || uint16_t(k) != oldkey || d - DEPTH_ENTRY_OFFSET + 2 * pv > e.depth8 - 4
-        || e.relative_age(generation8))
+    if (b == BOUND_EXACT || uint16_t(k) != oldkey16
+        || d - DEPTH_ENTRY_OFFSET + 2 * pv > e.depth8 - 4 || e.relative_age(generation8))
     {
         assert(d > DEPTH_ENTRY_OFFSET);
         assert(d < 256 + DEPTH_ENTRY_OFFSET);
@@ -138,7 +154,7 @@ void Cluster::save(
     else if (e.depth() >= 5 && e.bound() != BOUND_EXACT)
         e.depth8--;
 
-    entry[i] = e;
+    entry[i] = e.to_raw();
 }
 
 
@@ -204,8 +220,10 @@ int TranspositionTable::hashfull(int maxAge) const {
     int cnt            = 0;
     for (int i = 0; i < 1000; ++i)
         for (int j = 0; j < ClusterSize; ++j)
-            cnt += table[i].entry[j].is_occupied()
-                && table[i].entry[j].relative_age(generation8) <= maxAgeInternal;
+        {
+            const TTEntryB e = TTEntryB::from_raw(table[i].entry[j]);
+            cnt += e.is_occupied() && e.relative_age(generation8) <= maxAgeInternal;
+        }
 
     return cnt / ClusterSize;
 }
@@ -237,10 +255,10 @@ std::tuple<bool, TTData, TTWriter> TranspositionTable::probe(const Key key) cons
 
     // Find an entry to be replaced according to the replacement strategy
     int replacei     = 0;
-    int replacescore = cl->entry[replacei].replace_score(generation8);
+    int replacescore = cl->replace_score(replacei, generation8);
     for (int i = 1; i < ClusterSize; ++i)
     {
-        int currentscore = cl->entry[i].replace_score(generation8);
+        int currentscore = cl->replace_score(i, generation8);
         if (replacescore > currentscore)
         {
             replacei     = i;
@@ -254,7 +272,7 @@ std::tuple<bool, TTData, TTWriter> TranspositionTable::probe(const Key key) cons
 }
 
 std::tuple<bool, TTData, TTWriter> TranspositionTable::read(Cluster* cl, int i) const {
-    const TTEntryB e = cl->entry[i];
+    const TTEntryB e = TTEntryB::from_raw(cl->entry[i]);
     return {e.is_occupied(),
             TTData{
               Move(e.move16),
