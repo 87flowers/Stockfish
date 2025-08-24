@@ -38,6 +38,9 @@
     #include <arm_neon.h>
 #endif
 
+#ifdef defined(USE_NEON)
+static int8x8_t to8x8(int8_t a) { return vld1_s8(&a); }
+#endif
 
 namespace Stockfish {
 
@@ -255,7 +258,6 @@ void TranspositionTable::new_search() {
 
 uint8_t TranspositionTable::generation() const { return generation8; }
 
-
 // Looks up the current position in the transposition
 // table. It returns true if the position is found.
 // Otherwise, it returns false and a pointer to an empty or least valuable TTEntry
@@ -263,31 +265,46 @@ uint8_t TranspositionTable::generation() const { return generation8; }
 // minus 8 times its relative age. TTEntry t1 is considered more valuable than
 // TTEntry t2 if its replace value is greater than that of t2.
 std::tuple<bool, TTData, TTWriter> TranspositionTable::probe(const Key key) const {
-    Cluster* const cl    = cluster(key);
-    const uint16_t key16 = uint16_t(key);  // Use the low 16 bits as key inside the cluster
+    Cluster* const cl = cluster(key);
+
+    {
+        const uint16_t key16 = uint16_t(key);  // Use the low 16 bits as key inside the cluster
 
 #if defined(USE_AVX512)
-    uint8_t mask = _mm_cmpeq_epi16_mask(cl->key_vec(), _mm_set1_epi16(key16));
-    mask &= 0x3F;
-    if (mask)
-        return read(cl, Bit::ctz(static_cast<uint32_t>(mask)));
+        uint8_t mask = _mm_cmpeq_epi16_mask(cl->key_vec(), _mm_set1_epi16(key16));
+        mask &= 0x3F;
+        if (mask)
+            return read(cl, Bit::ctz(static_cast<uint32_t>(mask)));
 #elif defined(USE_SSE2)
-    uint32_t mask = _mm_movemask_epi8(_mm_cmpeq_epi16(cl->key_vec(), _mm_set1_epi16(key16)));
-    mask &= 0x00AAAAAA;
-    if (mask)
-        return read(cl, Bit::ctz(mask) / 2);
+        uint32_t mask = _mm_movemask_epi8(_mm_cmpeq_epi16(cl->key_vec(), _mm_set1_epi16(key16)));
+        mask &= 0x00AAAAAA;
+        if (mask)
+            return read(cl, Bit::ctz(mask) / 2);
 #elif defined(USE_NEON)
-    uint8x8_t mask = vmovn_u16(vceqq_u16(cl->key_vec(), vld1q_dup_u16(&key16)));
-    uint64_t  m    = vget_lane_u64(vreinterpret_u64_u8(mask), 0);
-    m &= 0x0000FFFFFFFFFFFF;
-    if (m)
-        return read(cl, Bit::ctz(m) / 8);
+        uint8x8_t mask = vmovn_u16(vceqq_u16(cl->key_vec(), vld1q_dup_u16(&key16)));
+        uint64_t  m    = vget_lane_u64(vreinterpret_u64_u8(mask), 0);
+        m &= 0x0000FFFFFFFFFFFF;
+        if (m)
+            return read(cl, Bit::ctz(m) / 8);
 #else
-    for (int i = 0; i < ClusterSize; ++i)
-        if (cl->key[i] == key16)
-            return read(cl, i);
+        for (int i = 0; i < ClusterSize; ++i)
+            if (cl->key[i] == key16)
+                return read(cl, i);
 #endif
+    }
 
+#ifdef defined(USE_NEON)
+    int8x16x3_t clVec    = vld1q_s8_x3(reinterpret_cast<int8_t const*>(cl));
+    int8x8_t    nullVec  = to8x8(0x80);
+    int8x8_t    depthVec = vqtbx3_s8(nullVec, clVec, uint8x8_t{0, 8, 16, 24, 32, 40, 48, 56});
+    int8x8_t    genVec   = vqtbx3_s8(nullVec, clVec, uint8x8_t{1, 9, 17, 25, 33, 41, 49, 57});
+    int8x8_t    relativeAge =
+      vand_s8(vsub_s8(to8x8(GENERATION_CYCLE + generation8), genVec), to8x8(GENERATION_MASK));
+    int8x8_t score    = vsub_s8(depthVec, relativeAge);
+    int8_t   maxScore = vmaxv_s8(score);
+    uint64_t mask     = vget_lane_u64(vreinterpret_u64_u8(vceq_s8(score, to8x8(maxScore))), 0);
+    int      replacei = Bit::ctz(mask) / 8;
+#else
     // Find an entry to be replaced according to the replacement strategy
     int replacei     = 0;
     int replacescore = cl->replace_score(replacei, generation8);
@@ -300,6 +317,7 @@ std::tuple<bool, TTData, TTWriter> TranspositionTable::probe(const Key key) cons
             replacescore = currentscore;
         }
     }
+#endif
 
     return {false,
             TTData{Move::none(), VALUE_NONE, VALUE_NONE, DEPTH_ENTRY_OFFSET, BOUND_NONE, false},
