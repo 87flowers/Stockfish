@@ -24,10 +24,20 @@
 #include <cstring>
 #include <iostream>
 
+#include "bit.h"
 #include "memory.h"
 #include "misc.h"
 #include "syzygy/tbprobe.h"
 #include "thread.h"
+
+#if defined(USE_AVX512)
+    #include <immintrin.h>
+#elif defined(USE_SSE2)
+    #include <emmintrin.h>
+#elif defined(USE_NEON)
+    #include <arm_neon.h>
+#endif
+
 
 namespace Stockfish {
 
@@ -122,6 +132,10 @@ struct Cluster {
     int replace_score(int i, const uint8_t generation8) const {
         return TTEntryB::from_raw(entry[i]).replace_score(generation8);
     }
+
+#if defined(USE_SSE2)
+    __m128i key_vec() const { return _mm_load_si128(reinterpret_cast<__m128i const*>(&key[0])); }
+#endif
 };
 
 static_assert(sizeof(Cluster) == 64, "Suboptimal Cluster size");
@@ -245,13 +259,19 @@ uint8_t TranspositionTable::generation() const { return generation8; }
 // minus 8 times its relative age. TTEntry t1 is considered more valuable than
 // TTEntry t2 if its replace value is greater than that of t2.
 std::tuple<bool, TTData, TTWriter> TranspositionTable::probe(const Key key) const {
-
     Cluster* const cl    = cluster(key);
     const uint16_t key16 = uint16_t(key);  // Use the low 16 bits as key inside the cluster
 
+#if defined(USE_SSE2)
+    uint32_t mask = _mm_movemask_epi8(_mm_cmpeq_epi16(cl->key_vec(), _mm_set1_epi16(key16)));
+    mask &= 0x00AAAAAA;
+    if (mask)
+        return read(cl, Bit::ctz(mask) / 2);
+#else
     for (int i = 0; i < ClusterSize; ++i)
         if (cl->key[i] == key16)
             return read(cl, i);
+#endif
 
     // Find an entry to be replaced according to the replacement strategy
     int replacei     = 0;
