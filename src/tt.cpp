@@ -121,7 +121,7 @@ static_assert(sizeof(TTEntryB) == sizeof(uint64_t));
 
 static constexpr int ClusterSize = 6;
 
-alignas(64) struct Cluster {
+struct alignas(64) Cluster {
     uint64_t entry[ClusterSize];
     uint16_t key[ClusterSize];
     char     padding[4];
@@ -135,6 +135,10 @@ alignas(64) struct Cluster {
 
 #if defined(USE_SSE2) || defined(USE_AVX512)
     __m128i key_vec() const { return _mm_load_si128(reinterpret_cast<__m128i const*>(&key[0])); }
+#endif
+
+#if defined(USE_NEON)
+    uint16x8_t key_vec() const { return vld1q_u16(&key[0]); }
 #endif
 };
 
@@ -272,6 +276,12 @@ std::tuple<bool, TTData, TTWriter> TranspositionTable::probe(const Key key) cons
     mask &= 0x00AAAAAA;
     if (mask)
         return read(cl, Bit::ctz(mask) / 2);
+#elif defined(USE_NEON)
+    uint8x8_t mask = vmovn_u16(vceqq_u16(cl->key_vec(), vld1q_dup_u16(&key16)));
+    uint64_t  m    = vget_lane_u64(vreinterpret_u64_u8(mask), 0);
+    m &= 0x0000FFFFFFFFFFFF;
+    if (m)
+        return read(cl, Bit::ctz(m) / 8);
 #else
     for (int i = 0; i < ClusterSize; ++i)
         if (cl->key[i] == key16)
