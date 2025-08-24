@@ -73,8 +73,9 @@ struct TTWriter {
 
    private:
     friend class TranspositionTable;
-    TTEntry* entry;
-    TTWriter(TTEntry* tte);
+    Cluster* cl;
+    int      i;
+    TTWriter(Cluster* cl, int i);
 };
 
 
@@ -83,21 +84,26 @@ class TranspositionTable {
    public:
     ~TranspositionTable() { aligned_large_pages_free(table); }
 
-    void resize(size_t mbSize, ThreadPool& threads);  // Set TT size
-    void clear(ThreadPool& threads);                  // Re-initialize memory, multithreaded
-    int  hashfull(int maxAge = 0)
-      const;  // Approximate what fraction of entries (permille) have been written to during this root search
+    // Set TT size
+    void resize(size_t mbSize, ThreadPool& threads);
+    // Re-initialize memory, multithreaded
+    void clear(ThreadPool& threads);
+    // Approximate what fraction of entries (permille) have been written to during this root search
+    int hashfull(int maxAge = 0) const;
 
-    void
-    new_search();  // This must be called at the beginning of each root search to track entry aging
-    uint8_t generation() const;  // The current age, used when writing new data to the TT
-    std::tuple<bool, TTData, TTWriter>
-    probe(const Key key) const;  // The main method, whose retvals separate local vs global objects
-    TTEntry* first_entry(const Key key)
-      const;  // This is the hash function; its only external use is memory prefetching.
+    // This must be called at the beginning of each root search to track entry aging
+    void new_search();
+    // The current age, used when writing new data to the TT
+    uint8_t generation() const;
+    // The main method, whose retvals separate local vs global objects
+    std::tuple<bool, TTData, TTWriter> probe(const Key key) const;
+    // This is the hash function; its only external use is memory prefetching.
+    Cluster* cluster(const Key key) const;
 
    private:
-    friend struct TTEntry;
+    friend struct Cluster;
+
+    std::tuple<bool, TTData, TTWriter> read(Cluster* cl, int i) const;
 
     size_t   clusterCount;
     Cluster* table = nullptr;

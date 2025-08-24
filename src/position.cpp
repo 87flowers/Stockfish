@@ -924,7 +924,7 @@ DirtyPiece Position::do_move(Move                      m,
     // Update the key with the final value
     st->key = k;
     if (tt)
-        prefetch(tt->first_entry(key()));
+        prefetch(tt->cluster(key()));
 
     // Calculate the repetition info. It is the ply distance from the previous
     // occurrence of the same position, negative in the 3-fold case, or zero
@@ -1068,7 +1068,7 @@ void Position::do_null_move(StateInfo& newSt, const TranspositionTable& tt) {
     }
 
     st->key ^= Zobrist::side;
-    prefetch(tt.first_entry(key()));
+    prefetch(tt.cluster(key()));
 
     st->pliesFromNull = 0;
 
