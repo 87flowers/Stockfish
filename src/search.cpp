@@ -1181,6 +1181,9 @@ moves_loop:  // When in check, search starts here
         r -= moveCount * 66;
         r -= std::abs(correctionValue) / 30450;
 
+        if (!is_decisive(ttData.value) && is_valid(ss->staticEval) && is_valid(ttData.value))
+            r -= 3 * std::abs(ttData.value - ss->staticEval) / 4;
+
         // Increase reduction for cut nodes
         if (cutNode)
             r += 3094 + 1056 * !ttData.move;
