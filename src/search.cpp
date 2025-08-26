@@ -606,9 +606,9 @@ Value Search::Worker::search(
     StateInfo st;
 
     Key   posKey;
-    Move  move, excludedMove, bestMove;
+    Move  move, excludedMove, bestMove, probCutBestMove;
     Depth extension, newDepth;
-    Value bestValue, value, eval, maxValue, probCutBeta;
+    Value bestValue, value, eval, maxValue, probCutBeta, probCutBestValue;
     bool  givesCheck, improving, priorCapture, opponentWorsening;
     bool  capture, ttCapture;
     int   priorReduction;
@@ -624,6 +624,9 @@ Value Search::Worker::search(
     ss->moveCount = 0;
     bestValue     = -VALUE_INFINITE;
     maxValue      = VALUE_INFINITE;
+
+    probCutBestValue = -VALUE_INFINITE;
+    probCutBestMove  = Move::none();
 
     // Check for the available remaining time
     if (is_mainthread())
@@ -940,6 +943,12 @@ Value Search::Worker::search(
 
             undo_move(pos, move);
 
+            if (value > probCutBestValue)
+            {
+                probCutBestValue = value;
+                probCutBestMove  = move;
+            }
+
             if (value >= probCutBeta)
             {
                 // Save ProbCut data into transposition table
@@ -964,9 +973,9 @@ moves_loop:  // When in check, search starts here
       (ss - 1)->continuationHistory, (ss - 2)->continuationHistory, (ss - 3)->continuationHistory,
       (ss - 4)->continuationHistory, (ss - 5)->continuationHistory, (ss - 6)->continuationHistory};
 
-
-    MovePicker mp(pos, ttData.move, depth, &mainHistory, &lowPlyHistory, &captureHistory, contHist,
-                  &pawnHistory, ss->ply);
+    Move       firstMoveToTry = ttData.move ? ttData.move : probCutBestMove;
+    MovePicker mp(pos, firstMoveToTry, depth, &mainHistory, &lowPlyHistory, &captureHistory,
+                  contHist, &pawnHistory, ss->ply);
 
     value = bestValue;
 
