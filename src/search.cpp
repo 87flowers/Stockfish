@@ -778,7 +778,7 @@ Value Search::Worker::search(
         // Skip early pruning when in check
         ss->staticEval = eval = (ss - 2)->staticEval;
         improving             = false;
-        goto moves_loop;
+        goto small_probcut;
     }
     else if (excludedMove)
         unadjustedStaticEval = eval = ss->staticEval;
@@ -853,7 +853,20 @@ Value Search::Worker::search(
             return beta + (eval - beta) / 3;
     }
 
-    // Step 9. Null move search with verification search
+small_probcut:
+    // Step 9. A small Probcut idea
+    probCutBeta = [&] {
+        int ttDiff = std::max(0, depth - ttData.depth);
+        return beta + std::max(418, 2 + 26 * ttDiff * ttDiff);
+    }();
+    if ((ttData.bound & BOUND_LOWER) && ttData.depth > 0 && ttData.value >= probCutBeta
+        && !is_decisive(beta) && is_valid(ttData.value) && !is_decisive(ttData.value))
+        return ttData.value;
+
+    if (ss->inCheck)
+        goto moves_loop;
+
+    // Step 10. Null move search with verification search
     if (cutNode && ss->staticEval >= beta - 18 * depth + 390 && !excludedMove
         && pos.non_pawn_material(us) && ss->ply >= nmpMinPly && !is_loss(beta))
     {
@@ -895,13 +908,13 @@ Value Search::Worker::search(
 
     improving |= ss->staticEval >= beta;
 
-    // Step 10. Internal iterative reductions
+    // Step 11. Internal iterative reductions
     // At sufficient depth, reduce depth for PV/Cut nodes without a TTMove.
     // (*Scaler) Especially if they make IIR less aggressive.
     if (!allNode && depth >= 6 && !ttData.move && priorReduction <= 3)
         depth--;
 
-    // Step 11. ProbCut
+    // Step 12. ProbCut
     // If we have a good enough capture (or queen promotion) and a reduced search
     // returns a value much above beta, we can (almost) safely prune the previous move.
     probCutBeta = beta + 224 - 64 * improving;
@@ -952,16 +965,7 @@ Value Search::Worker::search(
         }
     }
 
-moves_loop:  // When in check, search starts here
-
-    // Step 12. A small Probcut idea
-    probCutBeta = [&] {
-        int ttDiff = std::max(0, depth - ttData.depth);
-        return beta + std::max(418, 2 + 26 * ttDiff * ttDiff);
-    }();
-    if ((ttData.bound & BOUND_LOWER) && ttData.depth > 0 && ttData.value >= probCutBeta
-        && !is_decisive(beta) && is_valid(ttData.value) && !is_decisive(ttData.value))
-        return ttData.value;
+moves_loop:
 
     const PieceToHistory* contHist[] = {
       (ss - 1)->continuationHistory, (ss - 2)->continuationHistory, (ss - 3)->continuationHistory,
