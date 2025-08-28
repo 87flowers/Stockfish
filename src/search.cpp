@@ -608,7 +608,7 @@ Value Search::Worker::search(
     Key   posKey;
     Move  move, excludedMove, bestMove;
     Depth extension, newDepth;
-    Value bestValue, value, eval, maxValue, probCutBeta;
+    Value bestValue, value, eval, maxValue, probCutBeta, probCutAlpha;
     bool  givesCheck, improving, priorCapture, opponentWorsening;
     bool  capture, ttCapture;
     int   priorReduction;
@@ -828,6 +828,12 @@ Value Search::Worker::search(
         depth++;
     if (priorReduction >= 2 && depth >= 2 && ss->staticEval + (ss - 1)->staticEval > 173)
         depth--;
+
+    probCutAlpha = alpha - 418;
+    if (!PvNode && !excludedMove && (ttData.bound & BOUND_UPPER) && ttData.depth >= depth - 4
+        && ttData.value <= probCutAlpha && !is_decisive(alpha) && is_valid(ttData.value)
+        && !is_decisive(ttData.value))
+        return probCutAlpha;
 
     // Step 7. Razoring
     // If eval is really low, skip search entirely and return the qsearch value.
