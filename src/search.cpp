@@ -829,11 +829,11 @@ Value Search::Worker::search(
     if (priorReduction >= 2 && depth >= 2 && ss->staticEval + (ss - 1)->staticEval > 173)
         depth--;
 
-    probCutAlpha = alpha - 418;
+    probCutAlpha = alpha - 700;
     if (!PvNode && !excludedMove && (ttData.bound & BOUND_UPPER) && ttData.depth >= depth - 4
         && ttData.value <= probCutAlpha && !is_decisive(alpha) && is_valid(ttData.value)
         && !is_decisive(ttData.value))
-        return probCutAlpha;
+        return qsearch<NonPV>(pos, ss, alpha, beta);
 
     // Step 7. Razoring
     // If eval is really low, skip search entirely and return the qsearch value.
