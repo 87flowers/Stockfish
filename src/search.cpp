@@ -1218,13 +1218,16 @@ moves_loop:  // When in check, search starts here
             // beyond the first move depth.
             // To prevent problems when the max value is less than the min value,
             // std::clamp has been replaced by a more robust implementation.
-            Depth d = std::max(1, std::min(newDepth - r / 1024, newDepth + 2)) + PvNode;
+            Depth d   = std::max(1, std::min(newDepth - r / 1024, newDepth + 2)) + PvNode;
+            Depth red = newDepth - d;
 
-            ss->reduction = newDepth - d;
+            ss->reduction = red;
             value         = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha, d, true);
             ss->reduction = 0;
 
-            if (value > beta + 470 && d >= depth - 4)
+            red                = std::max(0, red);
+            Value probcutDelta = std::max(470, red * red * 29);
+            if (!PvNode && value > beta + probcutDelta)
             {
                 // Good enough, don't bother with a full-depth search.
                 update_continuation_histories(ss, movedPiece, move.to_sq(), 1365);
