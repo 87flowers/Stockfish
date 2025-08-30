@@ -216,9 +216,7 @@ Move MovePicker::select(Pred filter) {
 
         if (move == ttMove)
             continue;
-        if constexpr (std::is_same_v<std::nullptr_t, Pred>)
-            return move;
-        else if (filter(move))
+        if (filter(move))
             return move;
     }
 }
