@@ -52,8 +52,10 @@ class MovePicker {
     void skip_quiet_moves();
 
    private:
+    ExtMove& selectUnfiltered();
     template<typename Pred>
-    Move select(Pred);
+    Move select(Pred pred);
+    Move select();
     template<GenType T>
     ExtMove* score(MoveList<T>&);
     ExtMove* begin() { return cur; }
