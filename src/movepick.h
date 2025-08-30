@@ -69,12 +69,14 @@ class MovePicker {
     const PawnHistory*           pawnHistory;
     Move                         ttMove;
     ExtMove *                    cur, *endCur, *endBadCaptures, *endCaptures, *endGenerated = moves;
+    ExtMove**                    skip;
     int                          stage;
     int                          threshold;
     Depth                        depth;
     int                          ply;
     bool                         skipQuiets = false;
     ExtMove                      moves[MAX_MOVES];
+    ExtMove*                     sortStack[MAX_MOVES];
 };
 
 }  // namespace Stockfish

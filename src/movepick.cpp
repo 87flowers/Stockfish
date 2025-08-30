@@ -196,7 +196,12 @@ ExtMove* MovePicker::score(MoveList<Type>& ml) {
 }
 
 // Select next move without any filtering
-ExtMove& MovePicker::selectUnfiltered() { return *cur++; }
+ExtMove& MovePicker::selectUnfiltered() {
+    for (ExtMove* i = cur + 1; i < endCur; i++)
+        if (i->value > cur->value)
+            std::swap(*i, *cur);
+    return *cur++;
+}
 
 // Returns the next move satisfying a predicate function.
 // This never returns the TT move, as it was emitted before.
@@ -247,7 +252,7 @@ top:
         cur = endBadCaptures = moves;
         endCur = endCaptures = score<CAPTURES>(ml);
 
-        partial_insertion_sort(cur, endCur, std::numeric_limits<int>::min());
+        skip = sortStack;
         ++stage;
         goto top;
     }
@@ -312,7 +317,7 @@ top:
         cur    = moves;
         endCur = endGenerated = score<EVASIONS>(ml);
 
-        partial_insertion_sort(cur, endCur, std::numeric_limits<int>::min());
+        skip = sortStack;
         ++stage;
         [[fallthrough]];
     }
