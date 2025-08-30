@@ -197,12 +197,8 @@ ExtMove* MovePicker::score(MoveList<Type>& ml) {
 
 // Select next move without any filtering
 ExtMove& MovePicker::selectUnfiltered() {
-    ExtMove* next = cur;
-    for (ExtMove* i = cur + 1; i < endCur; i++)
-        if (i->value > next->value)
-            next = i;
-    std::swap(*next, *cur);
-    return *cur++;
+    std::pop_heap(cur, endCur, [](ExtMove a, ExtMove b) { return a.value < b.value; });
+    return *--endCur;
 }
 
 // Returns the next move satisfying a predicate function.
@@ -252,7 +248,7 @@ top:
         cur = endBadCaptures = moves;
         endCur = endCaptures = score<CAPTURES>(ml);
 
-        skip = sortStack;
+        std::make_heap(cur, endCur);
         ++stage;
         goto top;
     }
@@ -317,7 +313,7 @@ top:
         cur    = moves;
         endCur = endGenerated = score<EVASIONS>(ml);
 
-        skip = sortStack;
+        std::make_heap(cur, endCur);
         ++stage;
         [[fallthrough]];
     }
