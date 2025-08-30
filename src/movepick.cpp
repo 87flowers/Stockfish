@@ -197,9 +197,11 @@ ExtMove* MovePicker::score(MoveList<Type>& ml) {
 
 // Select next move without any filtering
 ExtMove& MovePicker::selectUnfiltered() {
+    ExtMove* next = cur;
     for (ExtMove* i = cur + 1; i < endCur; i++)
-        if (i->value > cur->value)
-            std::swap(*i, *cur);
+        if (i->value > next->value)
+            next = i;
+    std::swap(*next, *cur);
     return *cur++;
 }
 
