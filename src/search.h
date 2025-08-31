@@ -57,6 +57,9 @@ class OptionsMap;
 
 namespace Search {
 
+constexpr int SEARCHEDLIST_CAPACITY = 32;
+using SearchedList                  = ValueList<Move, SEARCHEDLIST_CAPACITY>;
+
 // Stack struct keeps track of the information we need to remember from nodes
 // shallower and deeper in the tree during the search. Each search thread has
 // its own array of Stack objects, indexed by the current ply.
@@ -287,6 +290,8 @@ class Worker {
     ContinuationHistory   continuationHistory[2][2];
     PawnHistory           pawnHistory;
 
+    ContContHistory contContHistory;
+
     CorrectionHistory<Pawn>         pawnCorrectionHistory;
     CorrectionHistory<Minor>        minorPieceCorrectionHistory;
     CorrectionHistory<NonPawn>      nonPawnCorrectionHistory;
@@ -313,6 +318,17 @@ class Worker {
     Value qsearch(Position& pos, Stack* ss, Value alpha, Value beta);
 
     Depth reduction(bool i, Depth d, int mn, int delta) const;
+
+    void update_all_stats(const Position& pos,
+                          Stack*          ss,
+                          Move            bestMove,
+                          Square          prevSq,
+                          SearchedList&   quietsSearched,
+                          SearchedList&   capturesSearched,
+                          Depth           depth,
+                          Move            ttMove);
+    void update_quiet_histories(const Position& pos, Stack* ss, Move move, int bonus);
+    void update_continuation_histories(Stack* ss, Piece pc, Square to, int bonus);
 
     // Pointer to the search manager, only allowed to be called by the main thread
     SearchManager* main_manager() const {
