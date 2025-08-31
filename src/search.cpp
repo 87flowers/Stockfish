@@ -958,7 +958,7 @@ moves_loop:  // When in check, search starts here
     // Step 12. A small Probcut idea
     probCutBeta = [&] {
         int ttDiff = std::max(0, depth - ttData.depth);
-        return beta + std::max(418, 2 + 26 * ttDiff * ttDiff);
+        return beta + std::max(300, 2 + 104 * ttDiff);
     }();
     if ((ttData.bound & BOUND_LOWER) && ttData.depth > 0 && ttData.value >= probCutBeta
         && !is_decisive(beta) && is_valid(ttData.value) && !is_decisive(ttData.value))
