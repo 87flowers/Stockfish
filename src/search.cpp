@@ -1220,7 +1220,7 @@ moves_loop:  // When in check, search starts here
             value         = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha, d, true);
             ss->reduction = 0;
 
-            if (value > beta + 470 && d >= depth - 4)
+            if (value > beta && d >= depth - 4)
             {
                 // Good enough, don't bother with a full-depth search.
                 update_continuation_histories(ss, movedPiece, move.to_sq(), 1365);
