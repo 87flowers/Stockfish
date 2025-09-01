@@ -937,18 +937,21 @@ Value Search::Worker::search(
 
             // Probcut late move reductions
             Depth d = probCutDepth - reductions[i++] * reductions[depth] / 1024;
-
-            // If the qsearch held, perform the regular search
             if (value >= probCutBeta && d > 0)
                 value = -search<NonPV>(pos, ss + 1, -probCutBeta, -probCutBeta + 1, d, !cutNode);
+
+            // Full depth search
+            if (value >= probCutBeta && probCutDepth > d + 1 && probCutDepth > 0)
+                value = -search<NonPV>(pos, ss + 1, -probCutBeta, -probCutBeta + 1, probCutDepth,
+                                       !cutNode);
 
             undo_move(pos, move);
 
             if (value >= probCutBeta)
             {
                 // Save ProbCut data into transposition table
-                ttWriter.write(posKey, value_to_tt(value, ss->ply), ss->ttPv, BOUND_LOWER, d + 1,
-                               move, unadjustedStaticEval, tt.generation());
+                ttWriter.write(posKey, value_to_tt(value, ss->ply), ss->ttPv, BOUND_LOWER,
+                               probCutDepth + 1, move, unadjustedStaticEval, tt.generation());
 
                 if (!is_decisive(value))
                     return value - (probCutBeta - beta);
