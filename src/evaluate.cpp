@@ -54,11 +54,12 @@ Value Eval::evaluate(const Eval::NNUE::Networks&    networks,
                      const Position&                pos,
                      Eval::NNUE::AccumulatorStack&  accumulators,
                      Eval::NNUE::AccumulatorCaches& caches,
-                     int                            optimism) {
+                     int                            optimism,
+                     bool                           forceBigNet) {
 
     assert(!pos.checkers());
 
-    bool smallNet           = use_smallnet(pos);
+    bool smallNet           = !forceBigNet && use_smallnet(pos);
     auto [psqt, positional] = smallNet ? networks.small.evaluate(pos, accumulators, &caches.small)
                                        : networks.big.evaluate(pos, accumulators, &caches.big);
 
