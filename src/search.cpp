@@ -906,9 +906,7 @@ Value Search::Worker::search(
     // (*Scaler) Especially if they make IIR less aggressive.
     if (!allNode && depth >= 6 && !ttData.move && priorReduction <= 3)
     {
-        Value v = search<NonPV>(pos, ss, beta - 1, beta, depth - 4, true);
-        if (!PvNode && v >= beta + 420)
-            return v;
+        Value v = search<NonPV>(pos, ss, beta - 1, beta, 2, true);
 
         std::tie(ttHit, ttData, ttWriter) = tt.probe(posKey);
         if (!ttData.move)
