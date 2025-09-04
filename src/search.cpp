@@ -932,7 +932,7 @@ Value Search::Worker::search(
             auto [ttHitNext, ttDataNext, ttWriterNext] = tt.probe(nextPosKey);
             bool canCutoff =
               ttHitNext && is_valid(ttDataNext.value) && !is_decisive(ttDataNext.value)
-              && (ttData.bound & (-ttDataNext.value >= beta ? BOUND_UPPER : BOUND_LOWER))
+              && (ttDataNext.bound & (-ttDataNext.value >= beta ? BOUND_UPPER : BOUND_LOWER))
               && ttDataNext.move && pos.pseudo_legal(ttDataNext.move) && pos.legal(ttDataNext.move)
               && ttDataNext.depth > depth - 1;
             pos.undo_move(move);
