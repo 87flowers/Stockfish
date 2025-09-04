@@ -620,6 +620,10 @@ Value Search::Worker::search(
     SearchedList capturesSearched;
     SearchedList quietsSearched;
 
+    const PieceToHistory* contHist[] = {
+      (ss - 1)->continuationHistory, (ss - 2)->continuationHistory, (ss - 3)->continuationHistory,
+      (ss - 4)->continuationHistory, (ss - 5)->continuationHistory, (ss - 6)->continuationHistory};
+
     // Step 1. Initialize node
     ss->inCheck   = pos.checkers();
     priorCapture  = pos.captured_piece();
@@ -907,6 +911,37 @@ Value Search::Worker::search(
     if (!allNode && depth >= 6 && !ttData.move && priorReduction <= 3)
         depth--;
 
+    if (!PvNode && !excludedMove && cutNode && pos.rule50_count() < 80 && depth >= 10)
+    {
+        MovePicker mp(pos, Move::none(), depth, &mainHistory, &lowPlyHistory, &captureHistory,
+                      contHist, &pawnHistory, ss->ply);
+
+        int moveCount = 0;
+        while ((move = mp.next_move()) != Move::none())
+        {
+            if (!pos.legal(move))
+                continue;
+
+            moveCount++;
+
+            if (moveCount > 5)
+                break;
+
+            pos.do_move(move, st);
+            Key nextPosKey                             = pos.key();
+            auto [ttHitNext, ttDataNext, ttWriterNext] = tt.probe(nextPosKey);
+            bool canCutoff =
+              ttHitNext && is_valid(ttDataNext.value) && !is_decisive(ttDataNext.value)
+              && (ttData.bound & (-ttDataNext.value >= beta ? BOUND_UPPER : BOUND_LOWER))
+              && ttDataNext.move && pos.pseudo_legal(ttDataNext.move) && pos.legal(ttDataNext.move)
+              && ttDataNext.depth > depth - 1;
+            pos.undo_move(move);
+
+            if (canCutoff)
+                return -ttDataNext.value;
+        }
+    }
+
     // Step 11. ProbCut
     // If we have a good enough capture (or queen promotion) and a reduced search
     // returns a value much above beta, we can (almost) safely prune the previous move.
@@ -963,10 +998,6 @@ moves_loop:  // When in check, search starts here
     if ((ttData.bound & BOUND_LOWER) && ttData.depth >= depth - 4 && ttData.value >= probCutBeta
         && !is_decisive(beta) && is_valid(ttData.value) && !is_decisive(ttData.value))
         return probCutBeta;
-
-    const PieceToHistory* contHist[] = {
-      (ss - 1)->continuationHistory, (ss - 2)->continuationHistory, (ss - 3)->continuationHistory,
-      (ss - 4)->continuationHistory, (ss - 5)->continuationHistory, (ss - 6)->continuationHistory};
 
 
     MovePicker mp(pos, ttData.move, depth, &mainHistory, &lowPlyHistory, &captureHistory, contHist,
