@@ -1198,7 +1198,7 @@ moves_loop:  // When in check, search starts here
         if ((ss + 1)->cutoffCnt > 2)
             r += 1051 + allNode * 814;
 
-        r += (ss->ply - 2 * rootDepth) * 300 / depth;
+        r += (ss->ply - 2 * rootDepth) * 300 / rootDepth;
 
         r += (ss + 1)->quietMoveStreak * 50;
 
