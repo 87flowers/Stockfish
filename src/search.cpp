@@ -881,8 +881,8 @@ Value Search::Worker::search(
         Depth R = 6 + depth / 3;
 
         ss->currentMove                   = Move::null();
-        ss->continuationHistory           = &continuationHistory[0][0][NO_PIECE][0];
-        ss->continuationCorrectionHistory = &continuationCorrectionHistory[NO_PIECE][0];
+        ss->continuationHistory           = &continuationHistory[0][0][NO_PIECE][1];
+        ss->continuationCorrectionHistory = &continuationCorrectionHistory[NO_PIECE][1];
 
         do_null_move(pos, st);
 
