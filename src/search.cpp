@@ -1433,9 +1433,12 @@ moves_loop:  // When in check, search starts here
     // Bonus for prior capture countermove that caused the fail low
     else if (priorCapture && prevSq != SQ_NONE)
     {
+        int bonus = 964;
+        bonus += 100 * (priorReduction > 0);
+
         Piece capturedPiece = pos.captured_piece();
         assert(capturedPiece != NO_PIECE);
-        captureHistory[pos.piece_on(prevSq)][prevSq][type_of(capturedPiece)] << 964;
+        captureHistory[pos.piece_on(prevSq)][prevSq][type_of(capturedPiece)] << bonus;
     }
 
     if (PvNode)
