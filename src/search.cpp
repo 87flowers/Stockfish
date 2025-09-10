@@ -1259,7 +1259,7 @@ moves_loop:  // When in check, search starts here
             // Note that if expected reduction is high, we reduce search depth here
             value = -search<NonPV>(pos, ss + 1, -(alpha + 1), -alpha,
                                    newDepth - (r > 3212) - (r > 4784 && newDepth > 2)
-                                     - (r > 6500 && newDepth > 4),
+                                     - (r > 8000 && newDepth > 4),
                                    !cutNode);
         }
 
