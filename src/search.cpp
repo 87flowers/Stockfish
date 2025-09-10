@@ -1167,6 +1167,8 @@ moves_loop:  // When in check, search starts here
             else if (cutNode)
                 extension = -2;
         }
+        else if (givesCheck && depth > 10 && std::abs(ss->staticEval) > 100 && (nodes & 0xFF) < 42)
+            extension = 1;
 
         // Step 16. Make the move
         do_move(pos, move, st, givesCheck, ss);
