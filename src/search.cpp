@@ -1153,7 +1153,7 @@ moves_loop:  // When in check, search starts here
             // If we are on a cutNode but the ttMove is not assumed to fail high
             // over current beta
             else if (cutNode)
-                extension = -2;
+                extension = depth < 25 ? -2 : -1;
         }
 
         // Step 16. Make the move
