@@ -1608,7 +1608,7 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta,
             if (!givesCheck && move.to_sq() != prevSq && !is_loss(futilityBase)
                 && move.type_of() != PROMOTION)
             {
-                if (moveCount > std::clamp(3 + depth / rootDepth, 1, 2))
+                if (moveCount > std::clamp(3 + depth / rootDepth, 1, 3))
                     continue;
 
                 Value futilityValue = futilityBase + PieceValue[pos.piece_on(move.to_sq())];
