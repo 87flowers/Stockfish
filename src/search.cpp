@@ -839,7 +839,7 @@ Value Search::Worker::search(
     // If eval is really low, skip search entirely and return the qsearch value.
     // For PvNodes, we must have a guard against mates being returned.
     if (!PvNode
-        && eval < alpha - 254 - std::clamp(std::abs(correctionValue) / 3200, 100, 500)
+        && eval < alpha - 254 - std::clamp(std::abs(correctionValue) / 3200, 50, 700)
                     - 294 * depth * depth)
         return qsearch<NonPV>(pos, ss, alpha, beta);
 
