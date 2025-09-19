@@ -1156,6 +1156,9 @@ moves_loop:  // When in check, search starts here
                 extension = -2;
         }
 
+        if (pos.rule50_count() > 80 && type_of(movedPiece) != PAWN && !capture)
+            r += 300;
+
         // Step 16. Make the move
         do_move(pos, move, st, givesCheck, ss);
 
