@@ -436,7 +436,8 @@ class TBTables {
         }
     };
 
-    static constexpr int Size     = 1 << 12;  // 4K table, indexed by key's 12 lsb
+    static constexpr int SizeBits = 12;
+    static constexpr int Size     = 1 << SizeBits;  // 4K table, indexed by key's 12 msb
     static constexpr int Overflow = 1;  // Number of elements allowed to map to the last bucket
 
     Entry hashTable[Size + Overflow];
@@ -447,7 +448,7 @@ class TBTables {
     size_t                   foundWDLFiles = 0;
 
     void insert(Key key, TBTable<WDL>* wdl, TBTable<DTZ>* dtz) {
-        uint32_t homeBucket = uint32_t(key) & (Size - 1);
+        uint32_t homeBucket = uint32_t(key >> (64 - SizeBits));
         Entry    entry{key, wdl, dtz};
 
         // Ensure last element is empty to avoid overflow when looking up
@@ -462,7 +463,7 @@ class TBTables {
 
             // Robin Hood hashing: If we've probed for longer than this element,
             // insert here and search for a new spot for the other element instead.
-            uint32_t otherHomeBucket = uint32_t(otherKey) & (Size - 1);
+            uint32_t otherHomeBucket = uint32_t(otherKey >> (64 - SizeBits));
             if (otherHomeBucket > homeBucket)
             {
                 std::swap(entry, hashTable[bucket]);
@@ -477,7 +478,7 @@ class TBTables {
    public:
     template<TBType Type>
     TBTable<Type>* get(Key key) {
-        for (const Entry* entry = &hashTable[uint32_t(key) & (Size - 1)];; ++entry)
+        for (const Entry* entry = &hashTable[uint32_t(key >> (64 - SizeBits))];; ++entry)
         {
             if (entry->key == key || !entry->get<Type>())
                 return entry->get<Type>();

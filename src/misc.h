@@ -29,6 +29,7 @@
 #include <iosfwd>
 #include <optional>
 #include <string>
+#include <tuple>
 #include <string_view>
 #include <vector>
 
@@ -276,17 +277,18 @@ class PRNG {
     }
 };
 
-inline uint64_t mul_hi64(uint64_t a, uint64_t b) {
+inline std::tuple<uint64_t, uint64_t> mul_hi64(uint64_t a, uint64_t b) {
 #if defined(__GNUC__) && defined(IS_64BIT)
     __extension__ using uint128 = unsigned __int128;
-    return (uint128(a) * uint128(b)) >> 64;
+    uint128 product             = (uint128(a) * uint128(b));
+    return {uint64_t(product >> 64), uint64_t(product)};
 #else
     uint64_t aL = uint32_t(a), aH = a >> 32;
     uint64_t bL = uint32_t(b), bH = b >> 32;
     uint64_t c1 = (aL * bL) >> 32;
     uint64_t c2 = aH * bL + c1;
     uint64_t c3 = aL * bH + uint32_t(c2);
-    return aH * bH + (c2 >> 32) + (c3 >> 32);
+    return {aH * bH + (c2 >> 32) + (c3 >> 32), a * b};
 #endif
 }
 

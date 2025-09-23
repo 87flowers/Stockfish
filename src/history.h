@@ -33,32 +33,28 @@
 
 namespace Stockfish {
 
-constexpr int PAWN_HISTORY_SIZE        = 512;    // has to be a power of 2
-constexpr int CORRECTION_HISTORY_SIZE  = 32768;  // has to be a power of 2
+constexpr int PAWN_HISTORY_BITS        = 9;
+constexpr int PAWN_HISTORY_SIZE        = 1 << PAWN_HISTORY_BITS;
+constexpr int CORRECTION_HISTORY_BITS  = 15;
+constexpr int CORRECTION_HISTORY_SIZE  = 1 << CORRECTION_HISTORY_BITS;
 constexpr int CORRECTION_HISTORY_LIMIT = 1024;
 constexpr int LOW_PLY_HISTORY_SIZE     = 5;
 
-static_assert((PAWN_HISTORY_SIZE & (PAWN_HISTORY_SIZE - 1)) == 0,
-              "PAWN_HISTORY_SIZE has to be a power of 2");
-
-static_assert((CORRECTION_HISTORY_SIZE & (CORRECTION_HISTORY_SIZE - 1)) == 0,
-              "CORRECTION_HISTORY_SIZE has to be a power of 2");
-
 inline int pawn_history_index(const Position& pos) {
-    return pos.pawn_key() & (PAWN_HISTORY_SIZE - 1);
+    return pos.pawn_key() >> (64 - PAWN_HISTORY_BITS);
 }
 
 inline int pawn_correction_history_index(const Position& pos) {
-    return pos.pawn_key() & (CORRECTION_HISTORY_SIZE - 1);
+    return pos.pawn_key() >> (64 - CORRECTION_HISTORY_BITS);
 }
 
 inline int minor_piece_index(const Position& pos) {
-    return pos.minor_piece_key() & (CORRECTION_HISTORY_SIZE - 1);
+    return pos.minor_piece_key() >> (64 - CORRECTION_HISTORY_BITS);
 }
 
 template<Color c>
 inline int non_pawn_index(const Position& pos) {
-    return pos.non_pawn_key(c) & (CORRECTION_HISTORY_SIZE - 1);
+    return pos.non_pawn_key(c) >> (64 - CORRECTION_HISTORY_BITS);
 }
 
 // StatsEntry is the container of various numerical statistics. We use a class

@@ -23,6 +23,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <tuple>
 
 #include "memory.h"
 #include "misc.h"
@@ -31,6 +32,10 @@
 
 namespace Stockfish {
 
+static std::tuple<uint64_t, uint16_t> split_key(Key key, size_t clusterCount) {
+    const auto [a, b] = mul_hi64(key, clusterCount);
+    return {a, uint16_t(b >> 48)};
+}
 
 // TTEntry struct is the 10 bytes transposition table entry, defined as below:
 //
@@ -56,7 +61,15 @@ struct TTEntry {
     }
 
     bool is_occupied() const;
-    void save(Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev, uint8_t generation8);
+    void save(Key     k,
+              size_t  clusterCount,
+              Value   v,
+              bool    pv,
+              Bound   b,
+              Depth   d,
+              Move    m,
+              Value   ev,
+              uint8_t generation8);
     // The returned age is a multiple of TranspositionTable::GENERATION_DELTA
     uint8_t relative_age(const uint8_t generation8) const;
 
@@ -90,21 +103,30 @@ bool TTEntry::is_occupied() const { return bool(depth8); }
 
 // Populates the TTEntry with a new node's data, possibly
 // overwriting an old position. The update is not atomic and can be racy.
-void TTEntry::save(
-  Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev, uint8_t generation8) {
+void TTEntry::save(Key     k,
+                   size_t  clusterCount,
+                   Value   v,
+                   bool    pv,
+                   Bound   b,
+                   Depth   d,
+                   Move    m,
+                   Value   ev,
+                   uint8_t generation8) {
+
+    const auto [clusterIndex, newKey16] = split_key(k, clusterCount);
 
     // Preserve the old ttmove if we don't have a new one
-    if (m || uint16_t(k) != key16)
+    if (m || newKey16 != key16)
         move16 = m;
 
     // Overwrite less valuable entries (cheapest checks first)
-    if (b == BOUND_EXACT || uint16_t(k) != key16 || d - DEPTH_ENTRY_OFFSET + 2 * pv > depth8 - 4
+    if (b == BOUND_EXACT || newKey16 != key16 || d - DEPTH_ENTRY_OFFSET + 2 * pv > depth8 - 4
         || relative_age(generation8))
     {
         assert(d > DEPTH_ENTRY_OFFSET);
         assert(d < 256 + DEPTH_ENTRY_OFFSET);
 
-        key16     = uint16_t(k);
+        key16     = newKey16;
         depth8    = uint8_t(d - DEPTH_ENTRY_OFFSET);
         genBound8 = uint8_t(generation8 | uint8_t(pv) << 2 | b);
         value16   = int16_t(v);
@@ -126,12 +148,13 @@ uint8_t TTEntry::relative_age(const uint8_t generation8) const {
 
 
 // TTWriter is but a very thin wrapper around the pointer
-TTWriter::TTWriter(TTEntry* tte) :
-    entry(tte) {}
+TTWriter::TTWriter(TTEntry* tte, size_t clusterCount_) :
+    entry(tte),
+    clusterCount(clusterCount_) {}
 
 void TTWriter::write(
   Key k, Value v, bool pv, Bound b, Depth d, Move m, Value ev, uint8_t generation8) {
-    entry->save(k, v, pv, b, d, m, ev, generation8);
+    entry->save(k, clusterCount, v, pv, b, d, m, ev, generation8);
 }
 
 
@@ -223,15 +246,15 @@ uint8_t TranspositionTable::generation() const { return generation8; }
 // minus 8 times its relative age. TTEntry t1 is considered more valuable than
 // TTEntry t2 if its replace value is greater than that of t2.
 std::tuple<bool, TTData, TTWriter> TranspositionTable::probe(const Key key) const {
+    const auto [clusterIndex, key16] = split_key(key, clusterCount);
 
-    TTEntry* const tte   = first_entry(key);
-    const uint16_t key16 = uint16_t(key);  // Use the low 16 bits as key inside the cluster
+    TTEntry* const tte = &table[clusterIndex].entry[0];
 
     for (int i = 0; i < ClusterSize; ++i)
         if (tte[i].key16 == key16)
             // This gap is the main place for read races.
             // After `read()` completes that copy is final, but may be self-inconsistent.
-            return {tte[i].is_occupied(), tte[i].read(), TTWriter(&tte[i])};
+            return {tte[i].is_occupied(), tte[i].read(), TTWriter(&tte[i], clusterCount)};
 
     // Find an entry to be replaced according to the replacement strategy
     TTEntry* replace = tte;
@@ -242,12 +265,12 @@ std::tuple<bool, TTData, TTWriter> TranspositionTable::probe(const Key key) cons
 
     return {false,
             TTData{Move::none(), VALUE_NONE, VALUE_NONE, DEPTH_ENTRY_OFFSET, BOUND_NONE, false},
-            TTWriter(replace)};
+            TTWriter(replace, clusterCount)};
 }
 
 
 TTEntry* TranspositionTable::first_entry(const Key key) const {
-    return &table[mul_hi64(key, clusterCount)].entry[0];
+    return &table[std::get<0>(split_key(key, clusterCount))].entry[0];
 }
 
 }  // namespace Stockfish

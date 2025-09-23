@@ -74,7 +74,8 @@ struct TTWriter {
    private:
     friend class TranspositionTable;
     TTEntry* entry;
-    TTWriter(TTEntry* tte);
+    size_t   clusterCount;
+    TTWriter(TTEntry* tte, size_t clusterCount_);
 };
 
 
