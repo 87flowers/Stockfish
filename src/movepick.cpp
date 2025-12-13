@@ -82,6 +82,7 @@ void partial_insertion_sort(ExtMove* begin, ExtMove* end, int limit) {
 // MovePicker constructor for the main search and for the quiescence search
 MovePicker::MovePicker(const Position&              p,
                        Move                         ttm,
+                       Move                         thm,
                        Depth                        d,
                        const ButterflyHistory*      mh,
                        const LowPlyHistory*         lph,
@@ -95,7 +96,7 @@ MovePicker::MovePicker(const Position&              p,
     captureHistory(cph),
     continuationHistory(ch),
     pawnHistory(ph),
-    ttMove(ttm),
+    ttMove(ttm ? ttm : thm),
     depth(d),
     ply(pl) {
 

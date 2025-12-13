@@ -993,8 +993,8 @@ moves_loop:  // When in check, search starts here
       (ss - 4)->continuationHistory, (ss - 5)->continuationHistory, (ss - 6)->continuationHistory};
 
 
-    MovePicker mp(pos, ttData.move, depth, &mainHistory, &lowPlyHistory, &captureHistory, contHist,
-                  &pawnHistory, ss->ply);
+    MovePicker mp(pos, ttData.move, (ss - 1)->threatMove, depth, &mainHistory, &lowPlyHistory,
+                  &captureHistory, contHist, &pawnHistory, ss->ply);
 
     value = bestValue;
 
@@ -1521,7 +1521,6 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
         ss->pv[0]    = Move::none();
     }
 
-    bestMove       = Move::none();
     ss->inCheck    = pos.checkers();
     moveCount      = 0;
     ss->threatMove = Move::none();
@@ -1609,8 +1608,8 @@ Value Search::Worker::qsearch(Position& pos, Stack* ss, Value alpha, Value beta)
     // Initialize a MovePicker object for the current position, and prepare to search
     // the moves. We presently use two stages of move generator in quiescence search:
     // captures, or evasions only when in check.
-    MovePicker mp(pos, ttData.move, DEPTH_QS, &mainHistory, &lowPlyHistory, &captureHistory,
-                  contHist, &pawnHistory, ss->ply);
+    MovePicker mp(pos, ttData.move, (ss - 1)->threatMove, DEPTH_QS, &mainHistory, &lowPlyHistory,
+                  &captureHistory, contHist, &pawnHistory, ss->ply);
 
     // Step 5. Loop through all pseudo-legal moves until no moves remain or a beta
     // cutoff occurs.

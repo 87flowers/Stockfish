@@ -40,6 +40,7 @@ class MovePicker {
     MovePicker& operator=(const MovePicker&) = delete;
     MovePicker(const Position&,
                Move,
+               Move,
                Depth,
                const ButterflyHistory*,
                const LowPlyHistory*,
