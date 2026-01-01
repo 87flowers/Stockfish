@@ -39,7 +39,7 @@ struct HelperOffsets {
 
 // Information on a particular pair of pieces and whether they should be excluded
 struct PiecePairData {
-    // Layout: bits 8..31 are the index contribution of this piece pair, bits 0 and 1 are exclusion info
+    // Layout: bits 0..23 are the index contribution of this piece pair, bits 30 and 31 are exclusion info
     uint32_t data;
 
     constexpr PiecePairData() :
@@ -48,13 +48,14 @@ struct PiecePairData {
     constexpr PiecePairData(bool      excluded_pair,
                             bool      semi_excluded_pair,
                             IndexType feature_index_base) :
-        data((uint32_t(excluded_pair) << 1) | (uint32_t(semi_excluded_pair && !excluded_pair))
-             | (uint32_t(feature_index_base) << 8)) {}
+        data((uint32_t(excluded_pair) << 25)
+             | (uint32_t(semi_excluded_pair && !excluded_pair) << 24)
+             | (feature_index_base & 0x00FFFFFF)) {}
 
-    // lsb: excluded if from < to; 2nd lsb: always excluded
-    constexpr uint8_t excluded_pair_info() const { return static_cast<uint8_t>(data); }
-
-    constexpr IndexType feature_index_base() const { return static_cast<IndexType>(data >> 8); }
+    constexpr IndexType feature_index_base(unsigned from_oriented, unsigned to_oriented) const {
+        const bool less_than = from_oriented < to_oriented;
+        return (data + (uint32_t(less_than) << 24)) & 0x02FFFFFF;
+    }
 };
 
 constexpr std::array<Piece, 12> AllPieces = {
@@ -218,15 +219,9 @@ inline sf_always_inline IndexType FullThreats::make_index(
 
     const auto piecePairData = index_lut1[attacker_oriented][attacked_oriented];
 
-    const bool less_than = from_oriented < to_oriented;
-    if ((piecePairData.excluded_pair_info() + less_than) & 2)
-        return FullThreats::Dimensions;
-
-    const IndexType index = piecePairData.feature_index_base()
-                          + offsets[attacker_oriented][from_oriented]
-                          + index_lut2[attacker_oriented][from_oriented][to_oriented];
-    sf_assume(index < Dimensions);
-    return index;
+    return piecePairData.feature_index_base(from_oriented, to_oriented)
+         + offsets[attacker_oriented][from_oriented]
+         + index_lut2[attacker_oriented][from_oriented][to_oriented];
 }
 
 // Get a list of indices for active features in ascending order
@@ -259,8 +254,7 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
                     Piece     attacked = pos.piece_on(to);
                     IndexType index    = make_index(perspective, attacker, from, to, attacked, ksq);
 
-                    if (index < Dimensions)
-                        active.push_back(index);
+                    active.push_back(index < Dimensions, index);
                 }
 
                 while (attacks_right)
@@ -270,8 +264,7 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
                     Piece     attacked = pos.piece_on(to);
                     IndexType index    = make_index(perspective, attacker, from, to, attacked, ksq);
 
-                    if (index < Dimensions)
-                        active.push_back(index);
+                    active.push_back(index < Dimensions, index);
                 }
             }
             else
@@ -288,8 +281,7 @@ void FullThreats::append_active_indices(Color perspective, const Position& pos, 
                         IndexType index =
                           make_index(perspective, attacker, from, to, attacked, ksq);
 
-                        if (index < Dimensions)
-                            active.push_back(index);
+                        active.push_back(index < Dimensions, index);
                     }
                 }
             }
@@ -349,8 +341,7 @@ void FullThreats::append_changed_indices(Color            perspective,
         auto&           insert = add ? added : removed;
         const IndexType index  = make_index(perspective, attacker, from, to, attacked, ksq);
 
-        if (index < Dimensions)
-            insert.push_back(index);
+        insert.push_back(index < Dimensions, index);
     }
 }
 
